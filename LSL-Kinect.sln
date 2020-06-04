@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29709.97
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LSL-Kinect", "LSL-Kinect.csproj", "{40DEF5E1-965B-46A7-8F70-44B799CBC849}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{40DEF5E1-965B-46A7-8F70-44B799CBC849}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40DEF5E1-965B-46A7-8F70-44B799CBC849}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40DEF5E1-965B-46A7-8F70-44B799CBC849}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40DEF5E1-965B-46A7-8F70-44B799CBC849}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {35EBA252-6D70-4F29-A768-F52C219685D0}
+	EndGlobalSection
+EndGlobal
