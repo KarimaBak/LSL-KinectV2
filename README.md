@@ -1,2 +1,2 @@
 # LSL-KInect
- Stream Kinet data to LSL 
+C# Program that broadcast motion capture datas by using Kinect and LabStreamingLayer technology.
