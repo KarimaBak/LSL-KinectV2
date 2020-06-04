@@ -13,7 +13,7 @@ using LSL;
 
 namespace LSL_Kinect
 {
-
+    #region enum
     enum CameraMode
     {
         Color,
@@ -21,33 +21,33 @@ namespace LSL_Kinect
         Infrared
     }
 
-/*
-    SpineBase = 0,
-    SpineMid = 1,
-    Neck = 2,
-    Head = 3,
-    ShoulderLeft = 4,
-    ElbowLeft = 5,
-    WristLeft = 6,
-    HandLeft = 7,
-    ShoulderRight = 8,
-    ElbowRight = 9,
-    WristRight = 10,
-    HandRight = 11,
-    HipLeft = 12,
-    KneeLeft = 13,
-    AnkleLeft = 14,
-    FootLeft = 15,
-    HipRight = 16,
-    KneeRight = 17,
-    AnkleRight = 18,
-    FootRight = 19,
-    SpineShoulder = 20,
-    HandTipLeft = 21,
-    ThumbLeft = 22,
-    HandTipRight = 23,
-    ThumbRight = 24
-*/
+    /*
+        SpineBase = 0,
+        SpineMid = 1,
+        Neck = 2,
+        Head = 3,
+        ShoulderLeft = 4,
+        ElbowLeft = 5,
+        WristLeft = 6,
+        HandLeft = 7,
+        ShoulderRight = 8,
+        ElbowRight = 9,
+        WristRight = 10,
+        HandRight = 11,
+        HipLeft = 12,
+        KneeLeft = 13,
+        AnkleLeft = 14,
+        FootLeft = 15,
+        HipRight = 16,
+        KneeRight = 17,
+        AnkleRight = 18,
+        FootRight = 19,
+        SpineShoulder = 20,
+        HandTipLeft = 21,
+        ThumbLeft = 22,
+        HandTipRight = 23,
+        ThumbRight = 24
+    */
     enum NUI_SKELETON_POSITION_INDEX
     {
         NUI_SKELETON_POSITION_HIP_CENTER = 0,
@@ -86,10 +86,13 @@ namespace LSL_Kinect
         NUI_SKELETON_TRACKED = (NUI_SKELETON_POSITION_ONLY + 1)
     };
 
-   
+
+    #endregion
+
 
     public partial class MainWindow : Window
     {
+        #region Private Variables
         //-------------Variables-----------------------
         private MultiSourceFrameReader readerMultiFrame;
         private KinectSensor kinectSensor;
@@ -106,8 +109,8 @@ namespace LSL_Kinect
         private List<Squelette> ListeDesSquelettes = new List<Squelette>();
         private Stopwatch t0 = new Stopwatch();
         private bool recEnCours = false;
-        private string path = @"C:\Users\tomas.barbe\Desktop\CSV_Record\Kinect_2\";
-        private string pathSelected = null;
+        private string CSVpath = null;
+        private string CSVpathSelected = null;
         // PJE 
         private bool afficheCorps = true;
         private bool saisieBool = false;
@@ -115,6 +118,12 @@ namespace LSL_Kinect
 
         private Dessins dessin = new Dessins();
 
+        private liblsl.StreamInfo infoData = null;
+        private liblsl.StreamOutlet outletData = null;
+        private liblsl.StreamOutlet outletMarker = null;
+        #endregion
+
+        #region Properties
         public string etat_Record
         {
             get { return (string)GetValue(etatRecordProperty); }
@@ -131,30 +140,26 @@ namespace LSL_Kinect
             set { SetValue(etatPathProperty, value); }
         }
 
-
         public string selectionCombo { get; set; }
+        #endregion
 
-
+        #region LSL Constante
         /* PJE: partie LSL */
-        const int NUI_SKELETON_POSITION_COUNT = (int)NUI_SKELETON_POSITION_INDEX.NUI_SKELETON_POSITION_FOOT_RIGHT + 1;
+        const int NUI_SKELETON_POSITION_COUNT = (int)NUI_SKELETON_POSITION_INDEX.NUI_SKELETON_POSITION_COUNT;
         const int NUM_CHANNELS_PER_JOINT = 4;
-        const int NUM_CHANNELS_PER_SKELETON = ((int)NUI_SKELETON_POSITION_INDEX.NUI_SKELETON_POSITION_COUNT * NUM_CHANNELS_PER_JOINT) + 2;
+        const int NUM_CHANNELS_PER_SKELETON = (NUI_SKELETON_POSITION_COUNT * NUM_CHANNELS_PER_JOINT) + 2;
         const int NUI_SKELETON_MAX_TRACKED_COUNT = 1;
         const int NUM_CHANNELS_PER_STREAM = NUI_SKELETON_MAX_TRACKED_COUNT * NUM_CHANNELS_PER_SKELETON;
         const int NUI_SKELETON_COUNT = 6;
         String[] joint_names = { "HipCenter", "Spine", "ShoulderCenter", "Head", "ShoulderLeft", "ElbowLeft", "WristLeft", "HandLeft", "ShoulderRight", "ElbowRight", "WristRight", "HandRight", "HipLeft", "KneeLeft", "AnkleLeft", "FootLeft", "HipRight", "KneeRight", "AnkleRight", "FootRight" };
-
-        private liblsl.StreamInfo infoData = null;
-        private liblsl.StreamOutlet outletData = null;
-        private liblsl.StreamOutlet outletMarker = null;
-
+        #endregion
 
         //--------------------MAIN-------------------
         public MainWindow()
         {
             InitializeComponent();           
             Initialise_Kinect();
-            System.Threading.Thread.Sleep(500);            
+            Thread.Sleep(500);            
             Affiche_Etat_Kinect();
             Affiche_Etat_Record();
             Affiche_Etat_Path();
@@ -169,41 +174,42 @@ namespace LSL_Kinect
             thUpdate_Couleur_Boutton.Start();
         }
 
-        private void lslInfo(String sensorId)
+        private void LslInfo(String sensorId)
         {
             liblsl.StreamInfo infoMetaData = new liblsl.StreamInfo("Kinect-LSL-MetaData", "Kinect", NUM_CHANNELS_PER_STREAM, 30, liblsl.channel_format_t.cf_float32, sensorId);
 
             liblsl.XMLElement channels = infoMetaData.desc().append_child("channels");
-            for (int s = 0; s < NUI_SKELETON_MAX_TRACKED_COUNT; s++)
+            for (int skelettonID = 0; skelettonID < NUI_SKELETON_MAX_TRACKED_COUNT; skelettonID++)
             {
-                for (int k = 0; k < NUI_SKELETON_POSITION_COUNT; k++)
+                for (int skelettonPosCount= 0; skelettonPosCount < NUI_SKELETON_POSITION_COUNT; skelettonPosCount++)
                 {
+                    String currentJointName = Enum.GetName(typeof(NUI_SKELETON_POSITION_INDEX), skelettonPosCount);
                     channels.append_child("channel")
-                        .append_child_value("label", joint_names[k] += "_X" )
-                        .append_child_value("marker", joint_names[k])
+                        .append_child_value("label", currentJointName += "_X" )
+                        .append_child_value("marker", currentJointName)
                         .append_child_value("type", "PositionX")
                         .append_child_value("unit", "meters");
                     channels.append_child("channel")
-                        .append_child_value("label", joint_names[k] += "_Y")
-                        .append_child_value("marker", joint_names[k])
+                        .append_child_value("label", currentJointName += "_Y")
+                        .append_child_value("marker", currentJointName)
                         .append_child_value("type", "PositionY")
                         .append_child_value("unit", "meters");
                     channels.append_child("channel")
-                        .append_child_value("label", joint_names[k] += "_Z")
-                        .append_child_value("marker", joint_names[k])
+                        .append_child_value("label", currentJointName += "_Z")
+                        .append_child_value("marker", currentJointName)
                         .append_child_value("type", "PositionZ")
                         .append_child_value("unit", "meters");
                     channels.append_child("channel")
-                        .append_child_value("label", joint_names[k] += "_Conf") 
-                        .append_child_value("marker", joint_names[k])
+                        .append_child_value("label", currentJointName += "_Conf") 
+                        .append_child_value("marker", currentJointName)
                         .append_child_value("type", "Confidence")
                         .append_child_value("unit", "normalized");
                 }
                 channels.append_child("channel")
-                    .append_child_value("label", "SkeletonTrackingId" + s)
+                    .append_child_value("label", "SkeletonTrackingId" + skelettonID)
                     .append_child_value("type", "TrackingId");
                 channels.append_child("channel")
-                    .append_child_value("label", "SkeletonQualityFlags" + s);
+                    .append_child_value("label", "SkeletonQualityFlags" + skelettonID);
             }
 
             // misc meta-data
@@ -236,65 +242,38 @@ namespace LSL_Kinect
             
             if ((dessin.idSqueletteChoisi != -1) && (dessin.idSqueletteChoisi == Convert.ToInt64(shortTrakingIdCalcul)) )
             {
-                
-                int i = BuildLSLData(data, 0, body.Joints[JointType.SpineBase] );
-                i = BuildLSLData(data, i, body.Joints[JointType.SpineMid]);
-                i = BuildLSLData(data, i, body.Joints[JointType.Neck]);
-                i = BuildLSLData(data, i, body.Joints[JointType.Head]);
-                i = BuildLSLData(data, i, body.Joints[JointType.ShoulderLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.ElbowLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.WristLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.HandLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.ShoulderRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.ElbowRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.WristRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.HandRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.HipLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.KneeLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.AnkleLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.FootLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.HipRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.KneeRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.AnkleRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.FootRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.SpineShoulder]);
-                i = BuildLSLData(data, i, body.Joints[JointType.HandTipLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.ThumbLeft]);
-                i = BuildLSLData(data, i, body.Joints[JointType.HandTipRight]);
-                i = BuildLSLData(data, i, body.Joints[JointType.ThumbRight]);
+                int channelIndex = 0, jointNumber = 0;
 
+                while (jointNumber < Enum.GetValues(typeof(JointType)).Length)
+                {
+                    channelIndex = BuildLSLData(data, channelIndex, body.Joints[(JointType) jointNumber]);
+                    jointNumber++;
+                }
                 
-                data[i++] = body.TrackingId;
+                data[channelIndex++] = body.TrackingId;
                 //PJE Test avec numéro squelette court ne pas utiliser l'ID court !!! 
                 // data[i++] = Convert.ToInt64(shortTrakingIdCalcul);
-                if (body.IsTracked)
-                {
-                    data[i++] = 1f;
-                }
-                else
-                {
-                    data[i++] = -1f;
-                }               
+                data[channelIndex++] = (body.IsTracked) ? 1f : -1f;        
             }
 
             outletData.push_sample(data);
             // PJE 
-            Console.WriteLine("outletData.push_sample(data);   traking court: " + dessin.idSqueletteChoisi + " traking : " + body.TrackingId );
+            //Console.WriteLine("outletData.push_sample(data);   traking court: " + dessin.idSqueletteChoisi + " traking : " + body.TrackingId );
 
+            //Update ID labels
             trakingIdCourt.Text = dessin.idSqueletteChoisi.ToString();
             trakingIdFull.Text = body.TrackingId.ToString();
-
         }
 
         // PJE Ce code est supposé marché mais remplacé par la fonction de test ci-dessous
-        private static int BuildLSLData(float[] data, int i, Joint joint)
+        private static int BuildLSLData(float[] data, int channelIndex, Joint joint)
         {
             CameraSpacePoint jointPosition = joint.Position;
-            data[i++] = jointPosition.X;
-            data[i++] = jointPosition.Y;
-            data[i++] = jointPosition.Z;
-            data[i++] = (float)joint.TrackingState / 2.0f;
-            return i;
+            data[channelIndex++] = jointPosition.X;
+            data[channelIndex++] = jointPosition.Y;
+            data[channelIndex++] = jointPosition.Z;
+            data[channelIndex++] = (float)joint.TrackingState / 2.0f;
+            return channelIndex;
         }
 
         // PJE Version de test
@@ -353,7 +332,7 @@ namespace LSL_Kinect
             if (this.readerMultiFrame != null)
             {
                 this.readerMultiFrame.MultiSourceFrameArrived += this.Reader_MultiSourceFrameArrived;
-                lslInfo(kinectSensor.UniqueKinectId );                
+                LslInfo(kinectSensor.UniqueKinectId );                
             }
         }
         // --------------------METHODES ET FONCTIONS-------------------
@@ -386,9 +365,9 @@ namespace LSL_Kinect
 
         private void Affiche_Etat_Path()
         {
-            if (path != null)
+            if (CSVpath != null)
             {
-                this.etat_Path = path;
+                this.etat_Path = CSVpath;
             }
             else
             {
@@ -574,7 +553,6 @@ namespace LSL_Kinect
                     {
                         // canvas.DrawSkeleton(body);
                         dessin.DrawSkeleton(canvas, body);
-                       
                     }
                 }
             }
@@ -583,20 +561,11 @@ namespace LSL_Kinect
         private int Reduction_Id_Body(Body[] _bodies, Body _body)
         {
             int id = 999;
-            if (_bodies[0].TrackingId == _body.TrackingId)
-                id = 0;
-            else if (_bodies[1].TrackingId == _body.TrackingId)
-                id = 1;
-            else if (_bodies[2].TrackingId == _body.TrackingId)
-                id = 2;
-            else if (_bodies[3].TrackingId == _body.TrackingId)
-                id = 3;
-            else if (_bodies[4].TrackingId == _body.TrackingId)
-                id = 4;
-            else if (_bodies[5].TrackingId == _body.TrackingId)
-                id = 5;
-            else
-                id = 999;
+            for (int i = 0; i < 6; i++)
+            {
+                if (_bodies[i].TrackingId == _body.TrackingId)
+                    id = i;
+            }
             return id;
         }
 
@@ -696,7 +665,7 @@ namespace LSL_Kinect
         {
             System.Windows.Forms.FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
             if (folderBrowserDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                pathSelected = folderBrowserDialog.SelectedPath+"\\";
+                CSVpathSelected = folderBrowserDialog.SelectedPath+"\\";
         }
 
         private void Button_Click_Record(object sender, RoutedEventArgs e)
@@ -705,7 +674,7 @@ namespace LSL_Kinect
             recEnCours = !recEnCours;
             if (recEnCours == true)
             {
-                if (path == null)
+                if (CSVpath == null)
                 {
                     Affiche_Arborescence();
                 }                
@@ -741,7 +710,7 @@ namespace LSL_Kinect
         {
             NumberFormatInfo nfi = new NumberFormatInfo();
             nfi.NumberDecimalSeparator = ".";
-            using (var writer = new StreamWriter(path))
+            using (var writer = new StreamWriter(CSVpath))
             {
                 writer.AutoFlush = true;
                 writer.WriteLine(_nomFichier);
@@ -902,11 +871,12 @@ namespace LSL_Kinect
         {
             try
             {
+                //TODO : Faire fonctionner le CSV
+                //Ecrire_CSV();
                 //Initialise_BkgwrLireServeur();
             }
             catch(Exception ex)
             {
-
                 System.Windows.Forms.MessageBox.Show(ex.Message, "Erreur dans CSV_button_Click");
             }
         }
