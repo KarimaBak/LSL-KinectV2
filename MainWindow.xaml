@@ -6,63 +6,87 @@
         xmlns:local="clr-namespace:LSL_Kinect"
         mc:Ignorable="d"
         Title="Kinect Capture"
-        Loaded="MainWindow_Loaded"                
+        Loaded="MainWindow_Loaded"
         Closing="Window_Closing"
-        Height="700" Width="800" 
-        KeyUp="Window_KeyUp"
-        >
+        Height="750" Width="800"
+        KeyUp="Window_KeyUp">
     <Window.Resources>
         <SolidColorBrush x:Key="MediumGreyBrush" Color="#ff6e6e6e" />
         <SolidColorBrush x:Key="KinectPurpleBrush" Color="#ff52318f" />
         <SolidColorBrush x:Key="KinectBlueBrush" Color="#ff00BCF2" />
     </Window.Resources>
-    <Grid Margin="10,0">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="Auto" MinHeight="500"/>
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" MinHeight="147" />
+            <RowDefinition Height="10" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="10" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="10" />
+        </Grid.ColumnDefinitions>
 
-        <Viewbox Grid.Row="1" HorizontalAlignment="Center" >
-            <Image Name="camera" Stretch="UniformToFill"/>
-        </Viewbox>
-        <Viewbox Grid.Row="1" HorizontalAlignment="Center" Panel.ZIndex="1000" >
-            <Canvas Name="canvas" MinHeight="700" MinWidth="800" />
-        </Viewbox>
+        <!--Upper part-->
+        <Image Grid.Row="1" Grid.Column="1" Name="camera"  MaxHeight="500" Stretch="Uniform"/>
+        <Canvas Grid.Row="1" Grid.Column="1"  Name="canvas" MaxHeight="500" MaxWidth="500" />
 
-		<TextBlock Grid.Row="2" x:Name="tbFichierRecord" Margin="3,53,10,69" ><InlineUIContainer>
-				<Button  x:Name="LSLMarkerSendButton" Content="LSL Marker Send" Width="134" Height="22" Click="LSLMarkerSendButton_Click" />
-			</InlineUIContainer></TextBlock>
-		<TextBlock Text="{Binding Path=etat_Path, UpdateSourceTrigger=PropertyChanged}" Margin="101,24,0,107" Grid.Row="2" HorizontalAlignment="Left" Width="647" />
+        <!-- Inner bottom grid-->
+        <Grid Grid.Row="2" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Grid.Row="4" Width="320" Margin="0,86,0,41">
-            <Button x:Name="color_btn" Content="Couleur" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="80" Click="Button_Click_Color"/>
-            <Button x:Name="depth_btn" Content="Profondeur" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="80" Click="Button_Click_Depth"/>
-            <Button x:Name="infraRed_btn" Content="Infrarouge" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="80" Click="Button_Click_IR"/>
-            <Button x:Name="VisuTracking_btn" Content="Visu Tracking" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="80" Click="Button_Click_Body"/>
-        </StackPanel>
-        <StackPanel Margin="0,81,0,41" Orientation="Horizontal " HorizontalAlignment="Right" Grid.Row="2" Width="274">
-            <Button x:Name="record_btn" Content="Record" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Click="Button_Click_Record" />
-            <Button x:Name="CSV_btn" Content="Exporter CSV" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Click="CSV_btn_Click" IsEnabled="False" />
-        </StackPanel>
+            <!-- Row 0 -->
+            <StackPanel Grid.Row="0" Grid.Column="0"  Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
+                <Label Content="Skeletton ID : " Margin="10" />
+                <TextBlock x:Name="trakingIdCourt" Text="-----" Margin="10" VerticalAlignment="Center" />
+                <Label Content="Complete Skeletton ID : " Margin="10" />
+                <TextBlock x:Name="trakingIdFull" Text="-----" Margin="10" VerticalAlignment="Center" />
+            </StackPanel>
 
-        <TextBlock Text="Squelette Id:" Margin="210,24,-85,107" Grid.Row="2" HorizontalAlignment="Left" Width="647" />
-        <TextBlock x:Name="trakingIdCourt" Text="-----" Margin="280,24,0,107" Grid.Row="2" HorizontalAlignment="Left" Width="95" />
+            <!-- Row 1 -->
+            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
+                <Button x:Name="LSLMarkerSendButton" Content="Send LSL Marker" Width="Auto"  Click="LSLMarkerSendButton_Click"  Margin="5" />
+                <Label Content="LSL Marker sent : " VerticalAlignment="Center" Margin="5" />
+                <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" VerticalAlignment="Center" Margin="5" />
+            </StackPanel>
 
-        <TextBlock Text="Squelette Id Complet:" Margin="380,24,0,107" Grid.Row="2" HorizontalAlignment="Left" Width="350" />
-        <TextBlock x:Name="trakingIdFull" Text="-----" Margin="498,24,0,112" Grid.Row="2" HorizontalAlignment="Left" Width="208" />
+            <!-- Row 2 -->
+            <GroupBox  Grid.Row="2" Grid.Column="0" Header="Rendering Options" Margin="5">
+                <StackPanel Grid.Column="0" Grid.Row="2"  Orientation="Horizontal">
+                    <Button x:Name="color_btn" Grid.Column="0" Content="Couleur" Margin="5" Click="Button_Click_Color" />
+                    <Button x:Name="depth_btn" Grid.Column="1" Content="Profondeur" Margin="5" Click="Button_Click_Depth" />
+                    <Button x:Name="infraRed_btn" Grid.Column="2" Content="Infrarouge" Margin="5" Click="Button_Click_IR" />
+                    <Button x:Name="VisuTracking_btn" Grid.Column="3" Content="Visu Tracking" Margin="5" Click="Button_Click_Body" />
+                </StackPanel>
+            </GroupBox>
 
+            <GroupBox Grid.Row="2" Grid.Column="1" Header="CSV" Margin="5">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="record_btn" Content="Start Record" Click="Button_Click_Record" Margin="5" />
+                    <Button x:Name="CSV_btn" Content="Export CSV" Click="CSV_btn_Click" IsEnabled="False" Margin="5" />
+                    <Button x:Name="Modifier_btn" Content="Set Path" Click="Modifier_btn_Click"  Margin="5" />
+                </StackPanel>
+            </GroupBox>
+        </Grid>
 
+        <!-- Not working
+        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Path=etat_Path, UpdateSourceTrigger=PropertyChanged}" />
 
         <StatusBar Grid.Row="4" HorizontalAlignment="Stretch" Name="statusBar" VerticalAlignment="Bottom" Background="White" Foreground="{StaticResource MediumGreyBrush}" Height="26">
             <StatusBarItem>
                 <TextBlock Text="{Binding Path=etat_Kinect, UpdateSourceTrigger=PropertyChanged}" />
             </StatusBarItem>
-            <StatusBarItem Height="26"/>
+            <StatusBarItem Height="26" />
         </StatusBar>
-        <Button x:Name="Modifier_btn" Grid.Row="2" Content="Modifier..." Margin="10,0,0,107" HorizontalAlignment="Left" Width="80" Click="Modifier_btn_Click" Height="20" VerticalAlignment="Bottom" />
-        <Label Content="LSL Marker send:" Margin="210,53,456,74" Grid.Row="2"/>
-        <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" Margin="321,57,0,74" Grid.Row="2" HorizontalAlignment="Left" Width="413" />
-
+        -->
     </Grid>
 </Window>

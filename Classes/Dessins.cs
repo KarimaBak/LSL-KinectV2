@@ -1,18 +1,22 @@
-﻿using System;
+﻿using Microsoft.Kinect;
+using System;
+using System.CodeDom;
 using System.Collections.Generic;
-using Microsoft.Kinect;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using System.Windows;
-
 
 namespace LSL_Kinect
 {
     public class Dessins
     {
-
         public const long KINECT_MINIMAL_ID = 72057594037900000;
+        private const float skeletonMaxX = 1;
+        private const float skeletonMinX = -1;
+        private const float skeletonMaxY= 1;
+        private const float skeletonMinY = -1;
 
         public long idSqueletteChoisi { get; set; } = -1;
 
@@ -28,54 +32,50 @@ namespace LSL_Kinect
             FontSize = 30
         };
 
-
-        public Joint ScaleTo(Joint joint, double width, double height, float skeletonMaxX, float skeletonMaxY)
+        public Joint ScaleTo(Joint joint, double width, double height)
         {
             joint.Position = new CameraSpacePoint
             {
-                X = Scale(width, skeletonMaxX, joint.Position.X),
-                Y = Scale(height, skeletonMaxY, -joint.Position.Y),
-                Z = joint.Position.Z    
+                X = Scale(width, skeletonMinX, skeletonMaxX, joint.Position.X),
+                Y = Scale(height, skeletonMinY, skeletonMaxY, -joint.Position.Y),
+                Z = joint.Position.Z
             };
 
             return joint;
         }
 
-        public  Joint ScaleTo(Joint joint, double width, double height)
+        public float Scale(double maxPixel, double minAxis, double maxAxis, float position)
         {
-            return ScaleTo(joint, width, height, 1.0f, 1.0f);
-        }
+            float normalizedPos = (float) ((position - minAxis) / (maxAxis - minAxis));
 
-        public float Scale(double maxPixel, double maxSkeleton, float position)
-        {
-            float value = (float)((((maxPixel / maxSkeleton) / 2) * position) + (maxPixel / 2));
+            float posScaled = (float) (minAxis + (normalizedPos * (maxPixel - minAxis)));
 
-            if (value > maxPixel)
+            if (posScaled > maxPixel)
             {
                 return (float)maxPixel;
             }
 
-            if (value < 0)
+            if (posScaled < 0)
             {
                 return 0;
             }
 
-            return value;
+            return posScaled;
         }
 
-        public  void DrawSkeleton(Canvas canvas, Body body)
+        public void DrawSkeleton(Canvas canvas, Body body)
         {
             //if (body == null) return;
 
             foreach (Joint joint in body.Joints.Values)
             {
-                DrawPoint(canvas , joint);
+                DrawPoint(canvas, joint);
                 Etat_Main(canvas, body.HandLeftState, body.Joints[JointType.HandLeft]);
                 Etat_Main(canvas, body.HandRightState, body.Joints[JointType.HandRight]);
             }
             IReadOnlyDictionary<JointType, Joint> joints = body.Joints;
             const float InferredZPositionClamp = 0.1f;
-            foreach ( JointType jointType in joints.Keys)
+            foreach (JointType jointType in joints.Keys)
             {
                 CameraSpacePoint position = joints[jointType].Position;
                 if (position.Z < 0)
@@ -83,9 +83,8 @@ namespace LSL_Kinect
                     position.Z = InferredZPositionClamp;
                 }
             }
-            
+
             DrawId(canvas, body.Joints[JointType.Head], body.TrackingId);
-     
 
             DrawLine(canvas, body.Joints[JointType.Head], body.Joints[JointType.Neck]);
             DrawLine(canvas, body.Joints[JointType.Neck], body.Joints[JointType.SpineShoulder]);
@@ -113,207 +112,135 @@ namespace LSL_Kinect
             DrawLine(canvas, body.Joints[JointType.AnkleRight], body.Joints[JointType.FootRight]);
         }
 
-        public  void DrawId(Canvas canvas, Joint head , ulong id )
+        public void DrawId(Canvas canvas, Joint head, ulong id)
         {
             if (head.TrackingState == TrackingState.Tracked)
             {
                 Joint joint = ScaleTo(head, canvas.ActualWidth, canvas.ActualHeight);
-                
 
                 Canvas.SetLeft(boutonDrawId, joint.Position.X - 2.3 * 40);
                 Canvas.SetTop(boutonDrawId, joint.Position.Y - 40 / 2);
-                boutonDrawId.Content = " " + (id - KINECT_MINIMAL_ID).ToString() +" ";
-                if ( canvas.Children.IndexOf(boutonDrawId)  == -1)
-                {                    
+                boutonDrawId.Content = " " + (id - KINECT_MINIMAL_ID).ToString() + " ";
+                if (canvas.Children.IndexOf(boutonDrawId) == -1)
+                {
                     boutonDrawId.Click += boutonClick;
                     canvas.Children.Add(boutonDrawId);
                 }
-                
-                
 
-                //ID: 
+                //ID:
                 // 72057594037940157
                 // 72057594037940223
                 // 72057594037940319
                 // 72057594037940333
-
                 // 72057594037928274
-
             }
         }
 
         public void boutonClick(object sender, RoutedEventArgs e)
         {
             Button bouton = (Button)sender;
-            // Console.WriteLine("ID" + bouton.Content);            
+            // Console.WriteLine("ID" + bouton.Content);
             idSqueletteChoisi = Convert.ToInt64(bouton.Content);
             // mainWindow.etat_TrackingId = idSqueletteChoisi.ToString();
         }
 
         public void DrawPoint(Canvas canvas, Joint joint)
         {
-            if (joint.TrackingState == TrackingState.Tracked)
+            joint = ScaleTo(joint, canvas.ActualWidth, canvas.ActualHeight);
+
+            int size = 0;
+            SolidColorBrush color = null;
+
+            switch (joint.TrackingState)
             {
-                joint = ScaleTo(joint, canvas.ActualWidth, canvas.ActualHeight);
+                case TrackingState.NotTracked:
+                    size = 5;
+                    color = new SolidColorBrush(Colors.White);
+                    break;
 
-                Ellipse ellipse = new Ellipse
-                {
-                    Width = 20,
-                    Height = 20,
-                    Fill = new SolidColorBrush(Colors.Blue)
-                };
+                case TrackingState.Inferred:
+                    size = 10;
+                    color = new SolidColorBrush(Colors.Yellow);
+                    break;
 
-                Canvas.SetLeft(ellipse, joint.Position.X - ellipse.Width / 2);
-                Canvas.SetTop(ellipse, joint.Position.Y - ellipse.Height / 2);
-
-                canvas.Children.Add(ellipse);
+                case TrackingState.Tracked:
+                    size = 20;
+                    color = new SolidColorBrush(Colors.Blue);
+                    break;
             }
-            if (joint.TrackingState == TrackingState.Inferred)
+
+            Ellipse ellipse = new Ellipse
             {
-                joint = ScaleTo(joint , canvas.ActualWidth, canvas.ActualHeight);
+                Width = size,
+                Height = size,
+                Fill = color
+            };
 
-                Ellipse ellipse = new Ellipse
-                {
-                    Width = 10,
-                    Height = 10,
-                    Fill = new SolidColorBrush(Colors.Yellow)
-                };
+            Canvas.SetLeft(ellipse, joint.Position.X - ellipse.Width / 2);
+            Canvas.SetTop(ellipse, joint.Position.Y - ellipse.Height / 2);
 
-                Canvas.SetLeft(ellipse, joint.Position.X - ellipse.Width / 2);
-                Canvas.SetTop(ellipse, joint.Position.Y - ellipse.Height / 2);
-
-                canvas.Children.Add(ellipse);
-            }
-            if (joint.TrackingState == TrackingState.NotTracked)
-            {
-                joint = ScaleTo(joint , canvas.ActualWidth, canvas.ActualHeight);
-
-                Ellipse ellipse = new Ellipse
-                {
-                    Width = 5,
-                    Height = 5,
-                    Fill = new SolidColorBrush(Colors.White)
-                };
-
-                Canvas.SetLeft(ellipse, joint.Position.X - ellipse.Width / 2);
-                Canvas.SetTop(ellipse, joint.Position.Y - ellipse.Height / 2);
-
-                canvas.Children.Add(ellipse);
-            }
+            canvas.Children.Add(ellipse);
         }
-        
-        public  void Etat_Main(Canvas canvas,HandState handState, Joint positionMain)
+
+        public void Etat_Main(Canvas canvas, HandState handState, Joint positionMain)
         {
             if (handState != HandState.NotTracked)
             {
-                positionMain = ScaleTo(positionMain , canvas.ActualWidth, canvas.ActualHeight);
+                positionMain = ScaleTo(positionMain, canvas.ActualWidth, canvas.ActualHeight);
+                SolidColorBrush color = null;
                 switch (handState)
                 {
                     case HandState.Closed:
-
-                        Ellipse ellipseClosed = new Ellipse
-                        {
-                            Width = 100,
-                            Height = 100,
-                            Fill = new SolidColorBrush(Colors.Red),
-                            Opacity = 0.1
-                        };
-
-                        Canvas.SetLeft(ellipseClosed, positionMain.Position.X - ellipseClosed.Width / 2);
-                        Canvas.SetTop(ellipseClosed, positionMain.Position.Y - ellipseClosed.Height / 2);
-                        canvas.Children.Add(ellipseClosed);
+                        color = new SolidColorBrush(Colors.Red);
                         break;
+
                     case HandState.Open:
-
-                        Ellipse ellipseOpen = new Ellipse
-                        {
-                            Width = 100,
-                            Height = 100,
-                            Fill = new SolidColorBrush(Colors.Green),
-                            Opacity = 0.1
-                        };
-
-                        Canvas.SetLeft(ellipseOpen, positionMain.Position.X - ellipseOpen.Width / 2);
-                        Canvas.SetTop(ellipseOpen, positionMain.Position.Y - ellipseOpen.Height / 2);
-                        canvas.Children.Add(ellipseOpen);
+                        color = new SolidColorBrush(Colors.Green);
                         break;
+
                     case HandState.Lasso:
-
-                        Ellipse ellipseLasso = new Ellipse
-                        {
-                            Width = 100,
-                            Height = 100,
-                            Fill = new SolidColorBrush(Colors.Blue),
-                            Opacity = 0.1
-                        };
-
-                        Canvas.SetLeft(ellipseLasso, positionMain.Position.X - ellipseLasso.Width / 2);
-                        Canvas.SetTop(ellipseLasso, positionMain.Position.Y - ellipseLasso.Height / 2);
-                        canvas.Children.Add(ellipseLasso);
+                        color = new SolidColorBrush(Colors.Blue);
                         break;
                 }
+
+                Ellipse ellipse = new Ellipse { Width = 100, Height = 100, Fill = color, Opacity = 0.1 };
+                Canvas.SetLeft(ellipse, positionMain.Position.X - ellipse.Width / 2);
+                Canvas.SetTop(ellipse, positionMain.Position.Y - ellipse.Height / 2);
+                canvas.Children.Add(ellipse);
             }
         }
 
-        public  void DrawLine(Canvas canvas, Joint first, Joint second)
+        public void DrawLine(Canvas canvas, Joint first, Joint second)
         {
-            
+            first = ScaleTo(first, canvas.ActualWidth, canvas.ActualHeight);
+            second = ScaleTo(second, canvas.ActualWidth, canvas.ActualHeight);
+
+            int thickness = 0;
+            SolidColorBrush color = null;
+
             if (first.TrackingState == TrackingState.Tracked && second.TrackingState == TrackingState.Tracked)
             {
-                first = ScaleTo(first , canvas.ActualWidth, canvas.ActualHeight);
-                second = ScaleTo(second , canvas.ActualWidth, canvas.ActualHeight);
-
-                Line line = new Line
-                {
-                    X1 = first.Position.X,
-                    Y1 = first.Position.Y,
-                    X2 = second.Position.X,
-                    Y2 = second.Position.Y,
-                    StrokeThickness = 8,
-                    Stroke = new SolidColorBrush(Colors.Green)
-                };
-
-                canvas.Children.Add(line);
+                thickness = 8;
+                color = new SolidColorBrush(Colors.Green);
             }
             else if (first.TrackingState == TrackingState.Inferred || second.TrackingState == TrackingState.Inferred)
             {
-                first = ScaleTo(first, canvas.ActualWidth, canvas.ActualHeight);
-                second = ScaleTo(second, canvas.ActualWidth, canvas.ActualHeight);
-
-                Line line = new Line
-                {
-                    X1 = first.Position.X,
-                    Y1 = first.Position.Y,
-                    X2 = second.Position.X,
-                    Y2 = second.Position.Y,
-                    StrokeThickness = 4,
-                    Stroke = new SolidColorBrush(Colors.Orange)
-                };
-
-                canvas.Children.Add(line);
+                thickness = 4;
+                color = new SolidColorBrush(Colors.Orange);
             }
             else if (first.TrackingState == TrackingState.NotTracked || second.TrackingState == TrackingState.NotTracked)
             {
-                first = ScaleTo(first , canvas.ActualWidth, canvas.ActualHeight);
-                second = ScaleTo(second, canvas.ActualWidth, canvas.ActualHeight);
-
-                Line line = new Line
-                {
-                    X1 = first.Position.X,
-                    Y1 = first.Position.Y,
-                    X2 = second.Position.X,
-                    Y2 = second.Position.Y,
-                    StrokeThickness = 2,
-                    Stroke = new SolidColorBrush(Colors.Red)
-                };
-
-                canvas.Children.Add(line);
+                thickness = 2;
+                color = new SolidColorBrush(Colors.Red);
             }
+
+            Line line = new Line{X1 = first.Position.X, Y1 = first.Position.Y, X2 = second.Position.X, 
+                Y2 = second.Position.Y, StrokeThickness = thickness, Stroke = color };
+
+            canvas.Children.Add(line);
         }
 
-
-
-        public  void DrawIdv0(Canvas canvas, Joint head, ulong id)
+        public void DrawIdv0(Canvas canvas, Joint head, ulong id)
         {
             if (head.TrackingState == TrackingState.Tracked)
             {
@@ -332,17 +259,14 @@ namespace LSL_Kinect
                 {
                     FontSize = 30,
                     Text = (id - KINECT_MINIMAL_ID).ToString()
-
                 };
                 Canvas.SetLeft(textBlock, joint.Position.X - 2.3 * ellipse.Width / 2);
                 Canvas.SetTop(textBlock, joint.Position.Y - ellipse.Height / 2);
-
 
                 Button bouton = new Button()
                 {
                     FontSize = 30
                 };
-
 
                 Canvas.SetLeft(bouton, joint.Position.X - 2.3 * ellipse.Width / 2);
                 Canvas.SetTop(bouton, joint.Position.Y - ellipse.Height / 2);
@@ -352,17 +276,14 @@ namespace LSL_Kinect
                 canvas.Children.Add(bouton);
                 // canvas.Children.Add(textBlock);
 
-                //ID: 
+                //ID:
                 // 72057594037940157
                 // 72057594037940223
                 // 72057594037940319
                 // 72057594037940333
 
                 // 72057594037928274
-
             }
         }
-
-
     }
 }

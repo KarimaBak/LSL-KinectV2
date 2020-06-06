@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -53,7 +54,6 @@ namespace LSL_Kinect
         private Stopwatch t0 = new Stopwatch();
         private bool recEnCours = false;
         private string CSVpath = null;
-        private string CSVpathSelected = null;
 
         // PJE
         private bool afficheCorps = true;
@@ -63,7 +63,6 @@ namespace LSL_Kinect
 
         private Dessins dessin = new Dessins();
 
-        private liblsl.StreamInfo infoData = null;
         private liblsl.StreamOutlet outletData = null;
         private liblsl.StreamOutlet outletMarker = null;
 
@@ -449,7 +448,7 @@ namespace LSL_Kinect
                                     , AbregeHandState(body.HandRightState), AbregeHandConfidence(body.HandRightConfidence), AbregeTrackingState(joint.TrackingState)));
                             }
                             // 2D space point
-                            Point point = new Point();
+                            System.Windows.Point point = new System.Windows.Point();
 
                             if (_mode == CameraMode.Color)
                             {
@@ -596,7 +595,7 @@ namespace LSL_Kinect
         {
             System.Windows.Forms.FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
             if (folderBrowserDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                CSVpathSelected = folderBrowserDialog.SelectedPath + "\\";
+                CSVpath = folderBrowserDialog.SelectedPath + "\\";
         }
 
         private void Button_Click_Record(object sender, RoutedEventArgs e)
@@ -629,7 +628,7 @@ namespace LSL_Kinect
                 t0.Reset();
 
                 CSV_btn.IsEnabled = true;
-                record_btn.Content = "Record";
+                record_btn.Content = "Start record";
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     Affiche_Etat_Record();
