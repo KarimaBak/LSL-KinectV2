@@ -119,16 +119,12 @@ namespace LSL_Kinect
             Thread.Sleep(500);
             Affiche_Etat_Kinect();
             Affiche_Etat_Record();
-            Affiche_Etat_Path();
             Affiche_Etat_Boutton();
             thUpdate_Kinect_State = new Thread(Update_Kinect_State);
             thUpdate_Kinect_State.SetApartmentState(ApartmentState.STA);
             thUpdate_Kinect_State.Start();
 
             //C'est un peu extrême
-            thUpdate_Path_State = new Thread(Update_Path_State);
-            thUpdate_Path_State.SetApartmentState(ApartmentState.STA);
-            thUpdate_Path_State.Start();
             thUpdate_Couleur_Boutton = new Thread(Update_Couleur_Boutton);
             thUpdate_Couleur_Boutton.Start();
         }
@@ -284,7 +280,6 @@ namespace LSL_Kinect
             return data;
         }
 
-        // PJE Ce code est supposé marché mais remplacé par la fonction de test ci-dessous
         private static int BuildLSLData(float[] data, int channelIndex, Joint joint)
         {
             CameraSpacePoint jointPosition = joint.Position;
@@ -344,10 +339,6 @@ namespace LSL_Kinect
            DependencyProperty.Register("etat_Record", typeof(string),
                typeof(MainWindow), new PropertyMetadata(string.Empty));
 
-        public static readonly DependencyProperty etatPathProperty =
-           DependencyProperty.Register("etat_Path", typeof(string),
-               typeof(MainWindow), new PropertyMetadata(string.Empty));
-
         private void Affiche_Etat_Record()
         {
             if (isRecording == true)
@@ -357,18 +348,6 @@ namespace LSL_Kinect
             else
             {
                 this.etat_Record = " Waiting for a record ";
-            }
-        }
-
-        private void Affiche_Etat_Path()
-        {
-            if (currentCSVpath != null)
-            {
-                this.etat_Path = currentCSVpath;
-            }
-            else
-            {
-                this.etat_Path = " Choisissez un chemin d'enregistrement... ";
             }
         }
 
@@ -611,11 +590,183 @@ namespace LSL_Kinect
             }
         }
 
-        private void MainWindow_Closing(object sender, CancelEventArgs e)
+        private void Update_Rec_State()
         {
-            throw new NotImplementedException();
+            Thread.Sleep(TimeSpan.FromMilliseconds(5));
+            this.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Affiche_Etat_Record();
+            }));
         }
 
+        private void Update_Kinect_State()
+        {
+            while (!Fermeture_Du_Programme)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(5));
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Affiche_Etat_Kinect();
+                }));
+            }
+        }
+
+        private void Update_Couleur_Boutton()
+        {
+            while (!Fermeture_Du_Programme)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(5));
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Affiche_Etat_Boutton();
+                }));
+            }
+        }
+
+        #region Button Event
+
+        private void OnRecordButtonClicked(object sender, RoutedEventArgs e)
+        {
+            isRecording = !isRecording;
+            if (isRecording == true)
+            {
+                CreateDataTable();
+
+                CSV_btn.IsEnabled = false;
+                //Trop extrême
+                thUpdate_Rec_State = new Thread(Update_Rec_State);
+                thUpdate_Rec_State.SetApartmentState(ApartmentState.STA);
+                thUpdate_Rec_State.Start();
+                record_btn.Content = "Stop record";
+            }
+            else
+            {
+                t0.Reset();
+
+                CSV_btn.IsEnabled = true;
+                record_btn.Content = "Start record";
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Affiche_Etat_Record();
+                }));
+            }
+        }
+
+        private void Button_Click_Color(object sender, RoutedEventArgs e)
+        {
+            _mode = CameraMode.Color;
+        }
+
+        private void Button_Click_Depth(object sender, RoutedEventArgs e)
+        {
+            _mode = CameraMode.Depth;
+        }
+
+        private void Button_Click_IR(object sender, RoutedEventArgs e)
+        {
+            _mode = CameraMode.Infrared;
+        }
+
+        private void Button_Click_Body(object sender, RoutedEventArgs e)
+        {
+            drawSkeletonOverCamera = !drawSkeletonOverCamera;
+        }
+
+        private void CSV_btn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                WriteCSVFile(currentDataTable);
+                //Ecrire_CSV();
+                //Initialise_BkgwrLireServeur();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message, "Erreur dans CSV_button_Click");
+            }
+        }
+
+        private void OnSendLSLClicked(object sender, RoutedEventArgs e)
+        {
+            spaceBarPressCounter++;
+            String[] dataMarker = new String[] { spaceBarPressCounter.ToString() };
+            outletMarker.push_sample(dataMarker, liblsl.local_clock());
+            LslNumberSpaceBarPress.Text = "" + (spaceBarPressCounter - 1) + "    at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
+        }
+
+        #endregion Button Event
+
+        #region Keyboard event
+
+        private void Window_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Space)
+            {
+                OnSendLSLClicked(null, null);
+            }
+        }
+
+        #endregion Keyboard event
+
+        #region Old code
+
+        /* Unused
+      private void Ecrire_CSV(DataTable _dataTable, string _nomFichier)
+      {
+          NumberFormatInfo nfi = new NumberFormatInfo();
+          nfi.NumberDecimalSeparator = ".";
+          using (var writer = new StreamWriter(currentCSVpath))
+          {
+              writer.AutoFlush = true;
+              writer.WriteLine(_nomFichier);
+              writer.Write("TimeStamp(s)");
+              for (int i = 0; i < 25; i++)
+                  writer.Write(";X." + ((JointType)i).ToString() + "(m);" + "Y." + ((JointType)i).ToString() + "(m);" + "Z." + ((JointType)i).ToString()
+                      + "(m);" + "TrkState." + ((JointType)i).ToString());
+
+              writer.WriteLine(";HandLeftState;" +
+                  "HandLeftConfidence;HandRightState;" +
+                  "HandRightConfidence");
+
+              foreach (DataRow row in _dataTable.Rows)
+              {
+                  string[] tempX = row.ReworkRow("X_");
+                  string[] tempY = row.ReworkRow("Y_");
+                  string[] tempZ = row.ReworkRow("Z_");
+                  string ts = row.Coma_To_Dot("TimeStamp");
+
+                  writer.Write(ts + ";");
+                  for (int i = 0; i < 25; i++)
+                      writer.Write(tempX[i] + ";" +
+                          tempY[i] + ";" + tempZ[i] + ";"
+                          + row["TrackingState_" + ((JointType)i).ToString()] + ";");
+
+                  writer.WriteLine(row["HandLeftState"] + ";" + row["HandLeftConfidence"] +
+                      ";" + row["HandRightState"] + ";" + row["HandRightConfidence"]);
+              }
+          }
+      }
+
+      private double Median_TimeStamp(List<Squelette> _liste)
+      {
+          long[] t0Tab = new long[25];
+          double t0Median = 0;
+
+          for (int i = 0; i < 25; i++)
+          {
+              if (_liste[i] != null)
+              {
+                  t0Tab[i] = _liste[i].Timestamp;
+              }
+          }
+
+          Array.Sort(t0Tab);
+          t0Median = ((t0Tab[12] + t0Tab[13]) / 2) * 0.001;
+
+          return t0Median;
+      }*/
+
+        /* Unused
         public static string AbregeTrackingState(TrackingState trk)
         {
             string abrege = null;
@@ -690,244 +841,31 @@ namespace LSL_Kinect
                     break;
             }
             return abrege;
-        }
+        }*/
 
-        private void Affiche_Arborescence()
-        {
-            System.Windows.Forms.FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
-            if (folderBrowserDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                currentCSVpath = folderBrowserDialog.SelectedPath + "\\";
-        }
+        //Unused
+        //private string Formatage_DateHeure()
+        //{
+        //    string dateHeureFormatee = null;
+        //    string dateHeureNonFormatee = null;
+        //    dateHeureNonFormatee = DateTime.Now.ToString();
+        //    char[] dateHeureNonFormateeTableau = null;
+        //    dateHeureNonFormateeTableau = dateHeureNonFormatee.ToCharArray();
+        //    for (int i = 0; i < dateHeureNonFormatee.Length; i++)
+        //    {
+        //        if (dateHeureNonFormateeTableau[i] == ':' ||
+        //            dateHeureNonFormateeTableau[i] == ' ' ||
+        //            dateHeureNonFormateeTableau[i] == '\\' ||
+        //            dateHeureNonFormateeTableau[i] == '/')
+        //        {
+        //            dateHeureNonFormateeTableau[i] = '_';
+        //        }
+        //    }
+        //    dateHeureFormatee = new string(dateHeureNonFormateeTableau);
 
-        private void Ecrire_CSV(DataTable _dataTable, string _nomFichier)
-        {
-            NumberFormatInfo nfi = new NumberFormatInfo();
-            nfi.NumberDecimalSeparator = ".";
-            using (var writer = new StreamWriter(currentCSVpath))
-            {
-                writer.AutoFlush = true;
-                writer.WriteLine(_nomFichier);
-                writer.Write("TimeStamp(s)");
-                for (int i = 0; i < 25; i++)
-                    writer.Write(";X." + ((JointType)i).ToString() + "(m);" + "Y." + ((JointType)i).ToString() + "(m);" + "Z." + ((JointType)i).ToString()
-                        + "(m);" + "TrkState." + ((JointType)i).ToString());
+        //    return dateHeureFormatee;
+        //}
 
-                writer.WriteLine(";HandLeftState;" +
-                    "HandLeftConfidence;HandRightState;" +
-                    "HandRightConfidence");
-
-                foreach (DataRow row in _dataTable.Rows)
-                {
-                    string[] tempX = row.ReworkRow("X_");
-                    string[] tempY = row.ReworkRow("Y_");
-                    string[] tempZ = row.ReworkRow("Z_");
-                    string ts = row.Coma_To_Dot("TimeStamp");
-
-                    writer.Write(ts + ";");
-                    for (int i = 0; i < 25; i++)
-                        writer.Write(tempX[i] + ";" +
-                            tempY[i] + ";" + tempZ[i] + ";"
-                            + row["TrackingState_" + ((JointType)i).ToString()] + ";");
-
-                    writer.WriteLine(row["HandLeftState"] + ";" + row["HandLeftConfidence"] +
-                        ";" + row["HandRightState"] + ";" + row["HandRightConfidence"]);
-                }
-            }
-        }
-
-        private double Median_TimeStamp(List<Squelette> _liste)
-        {
-            long[] t0Tab = new long[25];
-            double t0Median = 0;
-
-            for (int i = 0; i < 25; i++)
-            {
-                if (_liste[i] != null)
-                {
-                    t0Tab[i] = _liste[i].Timestamp;
-                }
-            }
-
-            Array.Sort(t0Tab);
-            t0Median = ((t0Tab[12] + t0Tab[13]) / 2) * 0.001;
-
-            return t0Median;
-        }
-
-        private void Update_Rec_State()
-        {
-            Thread.Sleep(TimeSpan.FromMilliseconds(5));
-            this.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                Affiche_Etat_Record();
-            }));
-        }
-
-        private void Update_Kinect_State()
-        {
-            while (!Fermeture_Du_Programme)
-            {
-                Thread.Sleep(TimeSpan.FromMilliseconds(5));
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Kinect();
-                }));
-            }
-        }
-
-        private void Update_Couleur_Boutton()
-        {
-            while (!Fermeture_Du_Programme)
-            {
-                Thread.Sleep(TimeSpan.FromMilliseconds(5));
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Boutton();
-                }));
-            }
-        }
-
-        private void Update_Path_State()
-        {
-            while (!Fermeture_Du_Programme)
-            {
-                Thread.Sleep(TimeSpan.FromMilliseconds(5));
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Path();
-                }));
-            }
-        }
-
-        private string Formatage_DateHeure()
-        {
-            string dateHeureFormatee = null;
-            string dateHeureNonFormatee = null;
-            dateHeureNonFormatee = DateTime.Now.ToString();
-            char[] dateHeureNonFormateeTableau = null;
-            dateHeureNonFormateeTableau = dateHeureNonFormatee.ToCharArray();
-            for (int i = 0; i < dateHeureNonFormatee.Length; i++)
-            {
-                if (dateHeureNonFormateeTableau[i] == ':' ||
-                    dateHeureNonFormateeTableau[i] == ' ' ||
-                    dateHeureNonFormateeTableau[i] == '\\' ||
-                    dateHeureNonFormateeTableau[i] == '/')
-                {
-                    dateHeureNonFormateeTableau[i] = '_';
-                }
-            }
-            dateHeureFormatee = new string(dateHeureNonFormateeTableau);
-
-            return dateHeureFormatee;
-        }
-
-        private int Verification_CSV(string _path)
-        {
-            int nombreDeLignes = 0;
-            if (File.Exists(_path))
-            {
-                using (var reader = new StreamReader(_path))
-                {
-                    while (reader.Peek() >= 0)
-                    {
-                        if (reader.Read() == '\n')
-                        {
-                            nombreDeLignes++;
-                        }
-                    }
-                }
-            }
-            return nombreDeLignes;
-        }
-
-        #region Button Event
-
-        private void OnRecordButtonClicked(object sender, RoutedEventArgs e)
-        {
-            isRecording = !isRecording;
-            if (isRecording == true)
-            {
-                CreateDataTable();
-
-                CSV_btn.IsEnabled = false;
-                //Trop extrême
-                thUpdate_Rec_State = new Thread(Update_Rec_State);
-                thUpdate_Rec_State.SetApartmentState(ApartmentState.STA);
-                thUpdate_Rec_State.Start();
-                record_btn.Content = "Stop record";
-            }
-            else
-            {
-                t0.Reset();
-
-                CSV_btn.IsEnabled = true;
-                record_btn.Content = "Start record";
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Record();
-                }));
-            }
-        }
-
-        private void Button_Click_Color(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Color;
-        }
-
-        private void Button_Click_Depth(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Depth;
-        }
-
-        private void Button_Click_IR(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Infrared;
-        }
-
-        private void Button_Click_Body(object sender, RoutedEventArgs e)
-        {
-            drawSkeletonOverCamera = !drawSkeletonOverCamera;
-        }
-
-        private void CSV_btn_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                WriteCSVFile(currentDataTable);
-                //Ecrire_CSV();
-                //Initialise_BkgwrLireServeur();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show(ex.Message, "Erreur dans CSV_button_Click");
-            }
-        }
-
-        private void OnSetPathButtonClicked(object sender, RoutedEventArgs e)
-        {
-            Affiche_Arborescence();
-        }
-
-        private void OnSendLSLClicked(object sender, RoutedEventArgs e)
-        {
-            spaceBarPressCounter++;
-            String[] dataMarker = new String[] { spaceBarPressCounter.ToString() };
-            outletMarker.push_sample(dataMarker, liblsl.local_clock());
-            LslNumberSpaceBarPress.Text = "" + (spaceBarPressCounter - 1) + "    at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
-        }
-
-        #endregion Button Event
-
-        #region Keyboard event
-
-        private void Window_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == System.Windows.Input.Key.Space)
-            {
-                OnSendLSLClicked(null, null);
-            }
-        }
-
-        #endregion Keyboard event
+        #endregion Old code
     }
 }
