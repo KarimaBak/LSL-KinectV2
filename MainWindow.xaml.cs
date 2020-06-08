@@ -59,7 +59,6 @@ namespace LSL_Kinect
         // PJE
         private bool drawSkeletonOverCamera = true;
 
-        private bool userChoseFileName = false;
         private int spaceBarPressCounter = 0;
 
         private Dessins dessin = new Dessins();
@@ -68,7 +67,7 @@ namespace LSL_Kinect
         private liblsl.StreamOutlet outletMarker = null;
 
         private DataTable currentDataTable = null;
-        private String currentCSVname = "Test.Csv";
+        private String currentCSVname = null;
 
         #endregion Private Variables
 
@@ -136,10 +135,9 @@ namespace LSL_Kinect
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            
             if (readerMultiFrame != null)
             {
-                if(outletData == null || outletMarker == null)
+                if (outletData == null || outletMarker == null)
                 {
                     SetLSLStreamInfo(kinectSensor.UniqueKinectId);
                 }
@@ -175,25 +173,34 @@ namespace LSL_Kinect
 
         private void WriteCSVFile(DataTable dataTable)
         {
-            using (var writer = new StreamWriter(currentCSVpath + currentCSVname))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-            {
-                foreach (DataColumn column in dataTable.Columns)
-                {
-                    csv.WriteField(column.ColumnName);
-                }
-                csv.NextRecord();
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "CSV files(*.csv) | *.csv";
+            saveFileDialog.InitialDirectory = currentCSVpath;
 
-                foreach (DataRow row in dataTable.Rows)
+            if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                currentCSVpath = Path.GetDirectoryName(saveFileDialog.FileName);
+                //currentCSVpath = saveFileDialog.FileName;
+                using (var writer = new StreamWriter(saveFileDialog.FileName))
+                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
                 {
                     foreach (DataColumn column in dataTable.Columns)
                     {
-                        csv.WriteField(row[column]);
+                        csv.WriteField(column.ColumnName);
                     }
                     csv.NextRecord();
-                }
 
-                writer.Dispose();
+                    foreach (DataRow row in dataTable.Rows)
+                    {
+                        foreach (DataColumn column in dataTable.Columns)
+                        {
+                            csv.WriteField(row[column]);
+                        }
+                        csv.NextRecord();
+                    }
+
+                    writer.Dispose();
+                }
             }
         }
 
@@ -248,7 +255,7 @@ namespace LSL_Kinect
         {
             // PJE
             //Console.WriteLine("outletData.push_sample(data);   traking court: " + dessin.idSqueletteChoisi + " traking : " + body.TrackingId );
-            outletData.push_sample(data);
+            outletData.push_sample(data, liblsl.local_clock());
         }
 
         private float[] GetDataBody(Body body)
@@ -323,7 +330,7 @@ namespace LSL_Kinect
                     }
                 }
             }
-            outletData.push_sample(data);
+            outletData.push_sample(data, liblsl.local_clock());
             // PJE Console.WriteLine("outletData.push_sample(data);   ");
         }
 
@@ -459,7 +466,7 @@ namespace LSL_Kinect
                         {
                             // 3D space point
                             CameraSpacePoint jointPosition = joint.Position;
-                            if (isRecording && userChoseFileName)
+                            if (isRecording)
                             {
                                 AddRowToDataTable(data);
 
@@ -471,7 +478,6 @@ namespace LSL_Kinect
                                 //    , AbregeHandState(body.HandRightState), AbregeHandConfidence(body.HandRightConfidence), AbregeTrackingState(joint.TrackingState)));
                                 //Unused
                             }
-
 
                             //Unused
                             //// 2D space point
@@ -693,49 +699,6 @@ namespace LSL_Kinect
                 currentCSVpath = folderBrowserDialog.SelectedPath + "\\";
         }
 
-        private void Button_Click_Record(object sender, RoutedEventArgs e)
-        {
-            userChoseFileName = false;
-            isRecording = !isRecording;
-            if (isRecording == true)
-            {
-                CreateDataTable();
-                if (currentCSVpath == null)
-                {
-                    Affiche_Arborescence();
-                }
-                CSV_btn.IsEnabled = false;
-
-                //Trop extrême
-                thUpdate_Rec_State = new Thread(Update_Rec_State);
-                thUpdate_Rec_State.SetApartmentState(ApartmentState.STA);
-                thUpdate_Rec_State.Start();
-
-                Saisie saisie_window = new Saisie();
-                saisie_window.ShowDialog();
-                userChoseFileName = saisie_window.userChoseFileName;
-
-                if (userChoseFileName == true)
-                {
-                    // Initialise_BkgwrEcrireSurServeur();
-                    record_btn.Content = "Stop record";
-                }
-                else
-                    isRecording = !isRecording;
-            }
-            if (isRecording == false)
-            {
-                t0.Reset();
-
-                CSV_btn.IsEnabled = true;
-                record_btn.Content = "Start record";
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Record();
-                }));
-            }
-        }
-
         private void Ecrire_CSV(DataTable _dataTable, string _nomFichier)
         {
             NumberFormatInfo nfi = new NumberFormatInfo();
@@ -877,6 +840,35 @@ namespace LSL_Kinect
             return nombreDeLignes;
         }
 
+        #region Button Event
+
+        private void OnRecordButtonClicked(object sender, RoutedEventArgs e)
+        {
+            isRecording = !isRecording;
+            if (isRecording == true)
+            {
+                CreateDataTable();
+
+                CSV_btn.IsEnabled = false;
+                //Trop extrême
+                thUpdate_Rec_State = new Thread(Update_Rec_State);
+                thUpdate_Rec_State.SetApartmentState(ApartmentState.STA);
+                thUpdate_Rec_State.Start();
+                record_btn.Content = "Stop record";
+            }
+            else
+            {
+                t0.Reset();
+
+                CSV_btn.IsEnabled = true;
+                record_btn.Content = "Start record";
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Affiche_Etat_Record();
+                }));
+            }
+        }
+
         private void Button_Click_Color(object sender, RoutedEventArgs e)
         {
             _mode = CameraMode.Color;
@@ -902,35 +894,40 @@ namespace LSL_Kinect
             try
             {
                 WriteCSVFile(currentDataTable);
-                //TODO : Faire fonctionner le CSV
                 //Ecrire_CSV();
                 //Initialise_BkgwrLireServeur();
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show(ex.Message, "Erreur dans CSV_button_Click");
+                System.Windows.MessageBox.Show(ex.Message, "Erreur dans CSV_button_Click");
             }
         }
 
-        private void Modifier_btn_Click(object sender, RoutedEventArgs e)
+        private void OnSetPathButtonClicked(object sender, RoutedEventArgs e)
         {
             Affiche_Arborescence();
         }
+
+        private void OnSendLSLClicked(object sender, RoutedEventArgs e)
+        {
+            spaceBarPressCounter++;
+            String[] dataMarker = new String[] { spaceBarPressCounter.ToString() };
+            outletMarker.push_sample(dataMarker, liblsl.local_clock());
+            LslNumberSpaceBarPress.Text = "" + (spaceBarPressCounter - 1) + "    at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
+        }
+
+        #endregion Button Event
+
+        #region Keyboard event
 
         private void Window_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.Space)
             {
-                LSLMarkerSendButton_Click(null, null);
+                OnSendLSLClicked(null, null);
             }
         }
 
-        private void LSLMarkerSendButton_Click(object sender, RoutedEventArgs e)
-        {
-            spaceBarPressCounter++;
-            String[] dataMarker = new String[] { spaceBarPressCounter.ToString() };
-            outletMarker.push_sample(dataMarker);
-            LslNumberSpaceBarPress.Text = "" + (spaceBarPressCounter - 1) + "    at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
-        }
+        #endregion Keyboard event
     }
 }

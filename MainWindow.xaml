@@ -54,7 +54,7 @@
 
             <!-- Row 1 -->
             <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
-                <Button x:Name="LSLMarkerSendButton" Content="Send LSL Marker" Width="Auto"  Click="LSLMarkerSendButton_Click"  Margin="5" />
+                <Button x:Name="LSLMarkerSendButton" Content="Send LSL Marker" Width="Auto"  Click="OnSendLSLClicked"  Margin="5" />
                 <Label Content="LSL Marker sent : " VerticalAlignment="Center" Margin="5" />
                 <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" VerticalAlignment="Center" Margin="5" />
             </StackPanel>
@@ -71,9 +71,8 @@
 
             <GroupBox Grid.Row="2" Grid.Column="1" Header="CSV" Margin="5">
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="record_btn" Content="Start Record" Click="Button_Click_Record" Margin="5" />
+                    <Button x:Name="record_btn" Content="Start Record" Click="OnRecordButtonClicked" Margin="5" />
                     <Button x:Name="CSV_btn" Content="Export CSV" Click="CSV_btn_Click" IsEnabled="False" Margin="5" />
-                    <Button x:Name="Modifier_btn" Content="Set Path" Click="Modifier_btn_Click"  Margin="5" />
                 </StackPanel>
             </GroupBox>
         </Grid>
