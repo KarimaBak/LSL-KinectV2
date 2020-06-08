@@ -85,13 +85,6 @@ namespace LSL_Kinect
             set { SetValue(etatKinectProperty, value); }
         }
 
-        public string etat_Path
-        {
-            get { return (string)GetValue(etatPathProperty); }
-            set { SetValue(etatPathProperty, value); }
-        }
-
-        public string selectionCombo { get; set; }
 
         #endregion Properties
 
