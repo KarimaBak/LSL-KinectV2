@@ -96,8 +96,7 @@ namespace LSL_Kinect
         private const int NUM_CHANNELS_PER_SKELETON = (NUI_SKELETON_POSITION_COUNT * NUM_CHANNELS_PER_JOINT) + 2;
         private const int NUI_SKELETON_MAX_TRACKED_COUNT = 1;
         private const int NUM_CHANNELS_PER_STREAM = NUI_SKELETON_MAX_TRACKED_COUNT * NUM_CHANNELS_PER_SKELETON;
-        private const int NUI_SKELETON_COUNT = 6;
-        private String[] joint_names = { "HipCenter", "Spine", "ShoulderCenter", "Head", "ShoulderLeft", "ElbowLeft", "WristLeft", "HandLeft", "ShoulderRight", "ElbowRight", "WristRight", "HandRight", "HipLeft", "KneeLeft", "AnkleLeft", "FootLeft", "HipRight", "KneeRight", "AnkleRight", "FootRight" };
+        private const int NUI_MAX_SKELETON_COUNT = 6;
 
         public static readonly IList<String> jointInfoSuffix =
           new ReadOnlyCollection<string>(new List<String> { "_X", "_Y", "_Z", "_Conf" });
