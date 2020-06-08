@@ -1,11 +1,12 @@
-﻿using LSL;
+﻿using CsvHelper;
+using LSL;
 using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
-using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -52,19 +53,22 @@ namespace LSL_Kinect
         private int displayHeight;
         private List<Squelette> ListeDesSquelettes = new List<Squelette>();
         private Stopwatch t0 = new Stopwatch();
-        private bool recEnCours = false;
-        private string CSVpath = null;
+        private bool isRecording = false;
+        private string currentCSVpath = null;
 
         // PJE
-        private bool afficheCorps = true;
+        private bool drawSkeletonOverCamera = true;
 
-        private bool saisieBool = false;
-        private int numberSpaceBarPress = 0;
+        private bool userChoseFileName = false;
+        private int spaceBarPressCounter = 0;
 
         private Dessins dessin = new Dessins();
 
         private liblsl.StreamOutlet outletData = null;
         private liblsl.StreamOutlet outletMarker = null;
+
+        private DataTable currentDataTable = null;
+        private String currentCSVname = "Test.Csv";
 
         #endregion Private Variables
 
@@ -103,6 +107,9 @@ namespace LSL_Kinect
         private const int NUI_SKELETON_COUNT = 6;
         private String[] joint_names = { "HipCenter", "Spine", "ShoulderCenter", "Head", "ShoulderLeft", "ElbowLeft", "WristLeft", "HandLeft", "ShoulderRight", "ElbowRight", "WristRight", "HandRight", "HipLeft", "KneeLeft", "AnkleLeft", "FootLeft", "HipRight", "KneeRight", "AnkleRight", "FootRight" };
 
+        public static readonly IList<String> jointInfoSuffix =
+          new ReadOnlyCollection<string>(new List<String> { "_X", "_Y", "_Z", "_Conf" });
+
         #endregion LSL Constante
 
         //--------------------MAIN-------------------
@@ -118,6 +125,8 @@ namespace LSL_Kinect
             thUpdate_Kinect_State = new Thread(Update_Kinect_State);
             thUpdate_Kinect_State.SetApartmentState(ApartmentState.STA);
             thUpdate_Kinect_State.Start();
+
+            //C'est un peu extrême
             thUpdate_Path_State = new Thread(Update_Path_State);
             thUpdate_Path_State.SetApartmentState(ApartmentState.STA);
             thUpdate_Path_State.Start();
@@ -125,7 +134,70 @@ namespace LSL_Kinect
             thUpdate_Couleur_Boutton.Start();
         }
 
-        private void LslInfo(String sensorId)
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            
+            if (readerMultiFrame != null)
+            {
+                if(outletData == null || outletMarker == null)
+                {
+                    SetLSLStreamInfo(kinectSensor.UniqueKinectId);
+                }
+                readerMultiFrame.MultiSourceFrameArrived += ManageMultiSourceFrame;
+            }
+        }
+
+        //Create a data table to store data
+        private void CreateDataTable()
+        {
+            currentDataTable = new DataTable();
+
+            foreach (String jointName in Enum.GetNames(typeof(JointType)))
+            {
+                foreach (String suffix in jointInfoSuffix)
+                {
+                    currentDataTable.Columns.Add(jointName + suffix, typeof(float));
+                }
+            }
+        }
+
+        private void AddRowToDataTable(float[] data)
+        {
+            var newRow = currentDataTable.NewRow();
+
+            for (int i = 0; i < currentDataTable.Columns.Count; i++)
+            {
+                newRow[i] = data[i];
+            }
+
+            currentDataTable.Rows.Add(newRow);
+        }
+
+        private void WriteCSVFile(DataTable dataTable)
+        {
+            using (var writer = new StreamWriter(currentCSVpath + currentCSVname))
+            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            {
+                foreach (DataColumn column in dataTable.Columns)
+                {
+                    csv.WriteField(column.ColumnName);
+                }
+                csv.NextRecord();
+
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    foreach (DataColumn column in dataTable.Columns)
+                    {
+                        csv.WriteField(row[column]);
+                    }
+                    csv.NextRecord();
+                }
+
+                writer.Dispose();
+            }
+        }
+
+        private void SetLSLStreamInfo(String sensorId)
         {
             liblsl.StreamInfo infoMetaData = new liblsl.StreamInfo("Kinect-LSL-MetaData", "Kinect", NUM_CHANNELS_PER_STREAM, 30, liblsl.channel_format_t.cf_float32, sensorId);
 
@@ -172,7 +244,14 @@ namespace LSL_Kinect
             outletMarker = new liblsl.StreamOutlet(streamMarker);
         }
 
-        private void SendLslDataOneBodyTracked(String sensorId, Body body, int nombreSquelette)
+        private void SendLslDataOneBodyTracked(float[] data)
+        {
+            // PJE
+            //Console.WriteLine("outletData.push_sample(data);   traking court: " + dessin.idSqueletteChoisi + " traking : " + body.TrackingId );
+            outletData.push_sample(data);
+        }
+
+        private float[] GetDataBody(Body body)
         {
             float[] data = new float[NUM_CHANNELS_PER_STREAM];// data length = 102 alors que (25 jointures) * 4 valeurs (x y z) + body.trackiId + isTracked
 
@@ -193,17 +272,9 @@ namespace LSL_Kinect
                 //PJE Test avec numéro squelette court ne pas utiliser l'ID court !!!
                 // data[i++] = Convert.ToInt64(shortTrakingIdCalcul);
                 data[channelIndex++] = (body.IsTracked) ? 1f : -1f;
-
-                outletData.push_sample(data);
             }
 
-            
-            // PJE
-            //Console.WriteLine("outletData.push_sample(data);   traking court: " + dessin.idSqueletteChoisi + " traking : " + body.TrackingId );
-
-            //Update ID labels
-            trakingIdCourt.Text = dessin.idSqueletteChoisi.ToString();
-            trakingIdFull.Text = body.TrackingId.ToString();
+            return data;
         }
 
         // PJE Ce code est supposé marché mais remplacé par la fonction de test ci-dessous
@@ -256,15 +327,6 @@ namespace LSL_Kinect
             // PJE Console.WriteLine("outletData.push_sample(data);   ");
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (this.readerMultiFrame != null)
-            {
-                this.readerMultiFrame.MultiSourceFrameArrived += this.Reader_MultiSourceFrameArrived;
-                LslInfo(kinectSensor.UniqueKinectId);
-            }
-        }
-
         // --------------------METHODES ET FONCTIONS-------------------
 
         public static readonly DependencyProperty etatKinectProperty =
@@ -281,7 +343,7 @@ namespace LSL_Kinect
 
         private void Affiche_Etat_Record()
         {
-            if (recEnCours == true)
+            if (isRecording == true)
             {
                 this.etat_Record = "Record in Progress...";
             }
@@ -293,9 +355,9 @@ namespace LSL_Kinect
 
         private void Affiche_Etat_Path()
         {
-            if (CSVpath != null)
+            if (currentCSVpath != null)
             {
-                this.etat_Path = CSVpath;
+                this.etat_Path = currentCSVpath;
             }
             else
             {
@@ -330,7 +392,7 @@ namespace LSL_Kinect
                 infraRed_btn.Background = System.Windows.Media.Brushes.Red;
             }
 
-            if (afficheCorps)
+            if (drawSkeletonOverCamera)
                 VisuTracking_btn.Background = System.Windows.Media.Brushes.LightGreen;
             else
                 VisuTracking_btn.Background = System.Windows.Media.Brushes.LightBlue;
@@ -369,47 +431,86 @@ namespace LSL_Kinect
                 Console.WriteLine("Could not obtain KinectSensor");
         }
 
-        // reader selon la source
-        private void Reader_MultiSourceFrameArrived(object sender, MultiSourceFrameArrivedEventArgs e)
+        private void ManageMultiSourceFrame(object sender, MultiSourceFrameArrivedEventArgs frameArgs)
         {
-            var acquireFrame = e.FrameReference.AcquireFrame();
-            //Color
-            using (var frame = acquireFrame.ColorFrameReference.AcquireFrame())
-            {
-                if (frame != null)
-                {
-                    if (_mode == CameraMode.Color)
-                    {
-                        camera.Source = frame.ToBitmap();
-                    }
-                }
-            }
+            MultiSourceFrame acquiredFrame = frameArgs.FrameReference.AcquireFrame();
+            SetCameraImage(acquiredFrame);
+            GetBodiesData(acquiredFrame);
 
-            // Infrared
-            using (var frame = acquireFrame.InfraredFrameReference.AcquireFrame())
+            if (bodies != null)
             {
-                if (frame != null)
-                {
-                    if (_mode == CameraMode.Infrared)
-                    {
-                        camera.Source = frame.ToBitmap();
-                    }
-                }
-            }
+                //PJE LSL
+                // SendLslDataAllBodies(kinectSensor.UniqueKinectId , bodies);
 
-            // Depth
-            using (var frame = acquireFrame.DepthFrameReference.AcquireFrame())
-            {
-                if (frame != null)
+                foreach (var body in bodies)
                 {
-                    if (_mode == CameraMode.Depth)
+                    if (body.IsTracked)
                     {
-                        camera.Source = frame.ToBitmap();
+                        int id = Reduction_Id_Body(bodies, body);
+                        float[] data = GetDataBody(body);
+                        // PJE
+                        SendLslDataOneBodyTracked(data);
+
+                        //Update ID labels
+                        UpdateSkelettonIDText(body);
+
+                        // COORDINATE MAPPING
+                        foreach (Joint joint in body.Joints.Values)
+                        {
+                            // 3D space point
+                            CameraSpacePoint jointPosition = joint.Position;
+                            if (isRecording && userChoseFileName)
+                            {
+                                AddRowToDataTable(data);
+
+                                //Unused
+                                //t0.Start();
+                                //ListeDesSquelettes.Add(new Squelette(t0.ElapsedMilliseconds,
+                                //   id, jointPosition.X, jointPosition.Y,
+                                //    jointPosition.Z, joint.JointType, AbregeHandState(body.HandLeftState), AbregeHandConfidence(body.HandLeftConfidence)
+                                //    , AbregeHandState(body.HandRightState), AbregeHandConfidence(body.HandRightConfidence), AbregeTrackingState(joint.TrackingState)));
+                                //Unused
+                            }
+
+
+                            //Unused
+                            //// 2D space point
+                            //Point point = new Point();
+
+                            //if (_mode == CameraMode.Color)
+                            //{
+                            //    ColorSpacePoint colorPoint =
+                            //        kinectSensor.CoordinateMapper.MapCameraPointToColorSpace(
+                            //            jointPosition);
+
+                            //    point.X = float.IsInfinity(colorPoint.X) ? 0 : colorPoint.X;
+                            //    point.Y = float.IsInfinity(colorPoint.Y) ? 0 : colorPoint.Y;
+                            //}
+                            //else if (_mode == CameraMode.Depth || _mode == CameraMode.Infrared)
+                            //{
+                            //    DepthSpacePoint depthPoint
+                            //        = kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(
+                            //            jointPosition);
+
+                            //    point.X = float.IsInfinity(depthPoint.X) ? 0 : depthPoint.X;
+                            //    point.Y = float.IsInfinity(depthPoint.Y) ? 0 : depthPoint.Y;
+                            //}
+                            //Unused
+                        }
+                    }
+
+                    if (drawSkeletonOverCamera)
+                    {
+                        dessin.DrawSkeleton(canvas, body);
                     }
                 }
             }
+        }
+
+        private void GetBodiesData(MultiSourceFrame acquiredFrame)
+        {
             // Body
-            using (BodyFrame bodyFrame = acquireFrame.BodyFrameReference.AcquireFrame())
+            using (BodyFrame bodyFrame = acquiredFrame.BodyFrameReference.AcquireFrame())
             {
                 if (bodyFrame != null)
                 {
@@ -421,62 +522,51 @@ namespace LSL_Kinect
                     bodyFrame.GetAndRefreshBodyData(bodies);
                 }
             }
-            if (bodies != null)
+        }
+
+        private void SetCameraImage(MultiSourceFrame acquiredFrame)
+        {
+            //Color
+            using (var frame = acquiredFrame.ColorFrameReference.AcquireFrame())
             {
-                //PJE LSL
-                // SendLslDataAllBodies(kinectSensor.UniqueKinectId , bodies);
-
-                foreach (var body in bodies)
+                if (frame != null)
                 {
-                    if (body.IsTracked)
+                    if (_mode == CameraMode.Color)
                     {
-                        int id = Reduction_Id_Body(bodies, body);
-                        // PJE
-                        SendLslDataOneBodyTracked(kinectSensor.UniqueKinectId, body, bodies.Length);
-
-                        // COORDINATE MAPPING
-                        foreach (Joint joint in body.Joints.Values)
-                        {
-                            // 3D space point
-                            CameraSpacePoint jointPosition = joint.Position;
-                            if (recEnCours && saisieBool)
-                            {
-                                t0.Start();
-                                ListeDesSquelettes.Add(new Squelette(t0.ElapsedMilliseconds,
-                                   id, jointPosition.X, jointPosition.Y,
-                                    jointPosition.Z, joint.JointType, AbregeHandState(body.HandLeftState), AbregeHandConfidence(body.HandLeftConfidence)
-                                    , AbregeHandState(body.HandRightState), AbregeHandConfidence(body.HandRightConfidence), AbregeTrackingState(joint.TrackingState)));
-                            }
-                            // 2D space point
-                            System.Windows.Point point = new System.Windows.Point();
-
-                            if (_mode == CameraMode.Color)
-                            {
-                                ColorSpacePoint colorPoint =
-                                    kinectSensor.CoordinateMapper.MapCameraPointToColorSpace(
-                                        jointPosition);
-
-                                point.X = float.IsInfinity(colorPoint.X) ? 0 : colorPoint.X;
-                                point.Y = float.IsInfinity(colorPoint.Y) ? 0 : colorPoint.Y;
-                            }
-                            else if (_mode == CameraMode.Depth || _mode == CameraMode.Infrared)
-                            {
-                                DepthSpacePoint depthPoint
-                                    = kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(
-                                        jointPosition);
-
-                                point.X = float.IsInfinity(depthPoint.X) ? 0 : depthPoint.X;
-                                point.Y = float.IsInfinity(depthPoint.Y) ? 0 : depthPoint.Y;
-                            }
-                        }
-                    }
-                    if (afficheCorps)
-                    {
-                        // canvas.DrawSkeleton(body);
-                        dessin.DrawSkeleton(canvas, body);
+                        camera.Source = frame.ToBitmap();
                     }
                 }
             }
+
+            // Infrared
+            using (var frame = acquiredFrame.InfraredFrameReference.AcquireFrame())
+            {
+                if (frame != null)
+                {
+                    if (_mode == CameraMode.Infrared)
+                    {
+                        camera.Source = frame.ToBitmap();
+                    }
+                }
+            }
+
+            // Depth
+            using (var frame = acquiredFrame.DepthFrameReference.AcquireFrame())
+            {
+                if (frame != null)
+                {
+                    if (_mode == CameraMode.Depth)
+                    {
+                        camera.Source = frame.ToBitmap();
+                    }
+                }
+            }
+        }
+
+        private void UpdateSkelettonIDText(Body body)
+        {
+            trakingIdCourt.Text = dessin.idSqueletteChoisi.ToString();
+            trakingIdFull.Text = body.TrackingId.ToString();
         }
 
         private int Reduction_Id_Body(Body[] _bodies, Body _body)
@@ -513,6 +603,11 @@ namespace LSL_Kinect
             {
                 thUpdate_Rec_State.Abort();
             }
+        }
+
+        private void MainWindow_Closing(object sender, CancelEventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         public static string AbregeTrackingState(TrackingState trk)
@@ -595,35 +690,40 @@ namespace LSL_Kinect
         {
             System.Windows.Forms.FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
             if (folderBrowserDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                CSVpath = folderBrowserDialog.SelectedPath + "\\";
+                currentCSVpath = folderBrowserDialog.SelectedPath + "\\";
         }
 
         private void Button_Click_Record(object sender, RoutedEventArgs e)
         {
-            saisieBool = false;
-            recEnCours = !recEnCours;
-            if (recEnCours == true)
+            userChoseFileName = false;
+            isRecording = !isRecording;
+            if (isRecording == true)
             {
-                if (CSVpath == null)
+                CreateDataTable();
+                if (currentCSVpath == null)
                 {
                     Affiche_Arborescence();
                 }
                 CSV_btn.IsEnabled = false;
+
+                //Trop extrême
                 thUpdate_Rec_State = new Thread(Update_Rec_State);
                 thUpdate_Rec_State.SetApartmentState(ApartmentState.STA);
                 thUpdate_Rec_State.Start();
+
                 Saisie saisie_window = new Saisie();
                 saisie_window.ShowDialog();
-                saisieBool = saisie_window.selectionBool;
-                if (saisieBool == true)
+                userChoseFileName = saisie_window.userChoseFileName;
+
+                if (userChoseFileName == true)
                 {
                     // Initialise_BkgwrEcrireSurServeur();
                     record_btn.Content = "Stop record";
                 }
                 else
-                    recEnCours = !recEnCours;
+                    isRecording = !isRecording;
             }
-            if (recEnCours == false)
+            if (isRecording == false)
             {
                 t0.Reset();
 
@@ -640,7 +740,7 @@ namespace LSL_Kinect
         {
             NumberFormatInfo nfi = new NumberFormatInfo();
             nfi.NumberDecimalSeparator = ".";
-            using (var writer = new StreamWriter(CSVpath))
+            using (var writer = new StreamWriter(currentCSVpath))
             {
                 writer.AutoFlush = true;
                 writer.WriteLine(_nomFichier);
@@ -794,13 +894,14 @@ namespace LSL_Kinect
 
         private void Button_Click_Body(object sender, RoutedEventArgs e)
         {
-            afficheCorps = !afficheCorps;
+            drawSkeletonOverCamera = !drawSkeletonOverCamera;
         }
 
         private void CSV_btn_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                WriteCSVFile(currentDataTable);
                 //TODO : Faire fonctionner le CSV
                 //Ecrire_CSV();
                 //Initialise_BkgwrLireServeur();
@@ -826,11 +927,10 @@ namespace LSL_Kinect
 
         private void LSLMarkerSendButton_Click(object sender, RoutedEventArgs e)
         {
-            numberSpaceBarPress++;
-            String[] dataMarker = new String[1];
-            dataMarker[0] = numberSpaceBarPress.ToString();
+            spaceBarPressCounter++;
+            String[] dataMarker = new String[] { spaceBarPressCounter.ToString() };
             outletMarker.push_sample(dataMarker);
-            LslNumberSpaceBarPress.Text = "" + (numberSpaceBarPress - 1) + "    at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
+            LslNumberSpaceBarPress.Text = "" + (spaceBarPressCounter - 1) + "    at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
         }
     }
 }
