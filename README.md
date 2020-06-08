@@ -7,7 +7,7 @@ First be sure to have your Kinect device correctly plugged in your computer.
 
 Go to LSL-Kinect\bin\Release and launch LSL_Kinect.app
 
-When the app is open, place yourself or your test subject in front of the Kinect camera until the skeletton appears on the screen.
+When the app is open, place yourself or your test subject in front of the Kinect camera until the skeleton appears on the screen.
 Then clic on the skeletton's id at the top of his head. This will select him and start to register his joints (body parts) positions in the LSL broadcast.
 
 Then use a LSL receiver programm to get the broadcast and a viewing application for .xdf file to visualise the datas. 
@@ -22,9 +22,7 @@ You can enable/disable the skeletton drawing on the screen by clicking the "Visu
 
 # Known Issues :
 
-- The "Export CSV", "Record" and "Modifier" buttons don't work yet.
-- The program broadcast both data and markers stream on his entire lifetime. This may cause the record to looks weird, since the data will only appear in a fraction of the record. You may have to scroll throught your viewing application to find them.
-
+-
 
 # Developper Guide :
 
