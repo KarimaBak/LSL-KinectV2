@@ -7,8 +7,8 @@
         mc:Ignorable="d"
         Title="Kinect Capture"
         Loaded="MainWindow_Loaded"
-        Closing="Window_Closing"
-        Height="750" Width="800"
+        Closing="OnWindowClosing"
+        Height="800" Width="800"
         KeyUp="Window_KeyUp">
     <Window.Resources>
         <SolidColorBrush x:Key="MediumGreyBrush" Color="#ff6e6e6e" />
@@ -30,7 +30,7 @@
 
         <!--Upper part-->
         <Image Grid.Row="1" Grid.Column="1" Name="camera"  MaxHeight="500" Stretch="Uniform"/>
-        <Canvas Grid.Row="1" Grid.Column="1"  Name="canvas" MaxHeight="500" MaxWidth="500" />
+        <Canvas Grid.Row="1" Grid.Column="1"  Name="canvas" MaxHeight="500" MaxWidth="500"/>
 
         <!-- Inner bottom grid-->
         <Grid Grid.Row="2" Grid.Column="1">
@@ -45,47 +45,54 @@
             </Grid.ColumnDefinitions>
 
             <!-- Row 0 -->
-            <StackPanel Grid.Row="0" Grid.Column="0"  Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
-                <Label Content="Skeletton ID : " Margin="10" />
-                <TextBlock x:Name="trakingIdCourt" Text="-----" Margin="10" VerticalAlignment="Center" />
-                <Label Content="Complete Skeletton ID : " Margin="10" />
-                <TextBlock x:Name="trakingIdFull" Text="-----" Margin="10" VerticalAlignment="Center" />
-            </StackPanel>
+            <GroupBox Grid.Row="0" Grid.Column="0" Header="App Status" Margin="5">
+                <StackPanel   Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
+                    <Label Content="Kinect :" Margin="10" VerticalAlignment="Center" />
+                    <Ellipse x:Name="kinectStateIndicator" Fill="Red" VerticalAlignment="Center"/>
+
+                    <Label Content="Broadcasting :" Margin="10" VerticalAlignment="Center" />
+                    <Ellipse x:Name="broadcastingStateIndicator" Fill="Red" VerticalAlignment="Center"/>
+
+                    <Label Content="Recording :" Margin="10" VerticalAlignment="Center" />
+                    <Ellipse x:Name="recordingStateIndicator" Fill="Red"  VerticalAlignment="Center"/>
+                </StackPanel>
+            </GroupBox>
 
             <!-- Row 1 -->
-            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
-                <Button x:Name="LSLMarkerSendButton" Content="Send LSL Marker" Width="Auto"  Click="OnSendLSLClicked"  Margin="5" />
-                <Label Content="LSL Marker sent : " VerticalAlignment="Center" Margin="5" />
-                <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" VerticalAlignment="Center" Margin="5" />
-            </StackPanel>
+            <GroupBox Grid.Row="1" Grid.Column="0" Header="Rendering Options" Margin="5">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
+                    <Label Content="Skeletton ID : " Margin="10" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="trakingIdCourt" Text="-----" VerticalAlignment="Center" />
+
+                    <Label Content="Complete Skeletton ID : " Margin="10" VerticalAlignment="Center" />
+                    <TextBlock x:Name="trakingIdFull" Text="-----" VerticalAlignment="Center" />
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Grid.Row="1" Grid.Column="1" Header="Broadcast Markers" Margin="5">
+                <StackPanel  Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
+                    <Button x:Name="LSLMarkerSendButton" Content="Send LSL Marker" Width="100"  Click="OnSendLSLClicked"  Margin="5" />
+                    <Label Content="LSL Marker sent : " VerticalAlignment="Center" Margin="5" />
+                    <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" VerticalAlignment="Center" Margin="5" />
+                </StackPanel>
+            </GroupBox>
 
             <!-- Row 2 -->
             <GroupBox  Grid.Row="2" Grid.Column="0" Header="Rendering Options" Margin="5">
                 <StackPanel Grid.Column="0" Grid.Row="2"  Orientation="Horizontal">
-                    <Button x:Name="color_btn" Grid.Column="0" Content="Couleur" Margin="5" Click="Button_Click_Color" />
-                    <Button x:Name="depth_btn" Grid.Column="1" Content="Profondeur" Margin="5" Click="Button_Click_Depth" />
-                    <Button x:Name="infraRed_btn" Grid.Column="2" Content="Infrarouge" Margin="5" Click="Button_Click_IR" />
-                    <Button x:Name="VisuTracking_btn" Grid.Column="3" Content="Visu Tracking" Margin="5" Click="Button_Click_Body" />
+                    <Button x:Name="color_btn" Grid.Column="0" Content="Couleur" Margin="5" Click="OnColorModeButtonClicked" />
+                    <Button x:Name="depth_btn" Grid.Column="1" Content="Profondeur" Margin="5" Click="OnDepthModeButtonClicked" />
+                    <Button x:Name="infraRed_btn" Grid.Column="2" Content="Infrarouge" Margin="5" Click="OnInfraredButtonClicked" />
+                    <Button x:Name="VisuTracking_btn" Grid.Column="3" Content="Visu Tracking" Margin="5" Click="OnBodyButtonIDCliked" />
                 </StackPanel>
             </GroupBox>
 
             <GroupBox Grid.Row="2" Grid.Column="1" Header="CSV" Margin="5">
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="record_btn" Content="Start Record" Click="OnRecordButtonClicked" Margin="5" />
-                    <Button x:Name="CSV_btn" Content="Export CSV" Click="CSV_btn_Click" IsEnabled="False" Margin="5" />
+                    <Button x:Name="CSV_btn" Content="Export CSV" Click="OnCSVBtnClicked" IsEnabled="False" Margin="5" />
                 </StackPanel>
             </GroupBox>
         </Grid>
-
-        <!-- Not working
-        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Path=etat_Path, UpdateSourceTrigger=PropertyChanged}" />
-
-        <StatusBar Grid.Row="4" HorizontalAlignment="Stretch" Name="statusBar" VerticalAlignment="Bottom" Background="White" Foreground="{StaticResource MediumGreyBrush}" Height="26">
-            <StatusBarItem>
-                <TextBlock Text="{Binding Path=etat_Kinect, UpdateSourceTrigger=PropertyChanged}" />
-            </StatusBarItem>
-            <StatusBarItem Height="26" />
-        </StatusBar>
-        -->
     </Grid>
 </Window>
