@@ -6,11 +6,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 
 namespace LSL_Kinect
 {
-    public class Dessins
+    public class Drawing
     {
         public const long KINECT_MINIMAL_ID = 72057594037900000;
         private const float skeletonMaxX = 1;
@@ -18,19 +19,14 @@ namespace LSL_Kinect
         private const float skeletonMaxY= 1;
         private const float skeletonMinY = -1;
 
-        public long idSqueletteChoisi { get; set; } = -1;
+        public ulong associatedBodyID = 0;
 
-        /*        private MainWindow mainWindow = null;
+        private Label IdLabel = new Label(){ FontSize = 30, Background = Brushes.White };
 
-                public Dessins(MainWindow mainWindow)
-                {
-                    this.mainWindow = mainWindow;
-                }*/
-
-        private Button boutonDrawId = new Button()
+        public Drawing(ulong id)
         {
-            FontSize = 30
-        };
+            associatedBodyID = id;
+        }
 
         public Joint ScaleTo(Joint joint, double width, double height)
         {
@@ -65,8 +61,6 @@ namespace LSL_Kinect
 
         public void DrawSkeleton(Canvas canvas, Body body)
         {
-            //if (body == null) return;
-
             foreach (Joint joint in body.Joints.Values)
             {
                 DrawPoint(canvas, joint);
@@ -116,32 +110,16 @@ namespace LSL_Kinect
         {
             if (head.TrackingState == TrackingState.Tracked)
             {
-                Joint joint = ScaleTo(head, canvas.ActualWidth, canvas.ActualHeight);
+                Joint headJoint = ScaleTo(head, canvas.ActualWidth, canvas.ActualHeight);
 
-                Canvas.SetLeft(boutonDrawId, joint.Position.X - 2.3 * 40);
-                Canvas.SetTop(boutonDrawId, joint.Position.Y - 40 / 2);
-                boutonDrawId.Content = " " + (id - KINECT_MINIMAL_ID).ToString() + " ";
-                if (canvas.Children.IndexOf(boutonDrawId) == -1)
+                Canvas.SetLeft(IdLabel, headJoint.Position.X + (IdLabel.ActualWidth * 0.5));
+                Canvas.SetTop(IdLabel, headJoint.Position.Y - (IdLabel.ActualHeight * 0.5));
+                IdLabel.Content = (id - KINECT_MINIMAL_ID).ToString();
+                if (canvas.Children.IndexOf(IdLabel) == -1)
                 {
-                    boutonDrawId.Click += boutonClick;
-                    canvas.Children.Add(boutonDrawId);
+                    canvas.Children.Add(IdLabel);
                 }
-
-                //ID:
-                // 72057594037940157
-                // 72057594037940223
-                // 72057594037940319
-                // 72057594037940333
-                // 72057594037928274
             }
-        }
-
-        public void boutonClick(object sender, RoutedEventArgs e)
-        {
-            Button bouton = (Button)sender;
-            // Console.WriteLine("ID" + bouton.Content);
-            idSqueletteChoisi = Convert.ToInt64(bouton.Content);
-            // mainWindow.etat_TrackingId = idSqueletteChoisi.ToString();
         }
 
         public void DrawPoint(Canvas canvas, Joint joint)
@@ -275,14 +253,6 @@ namespace LSL_Kinect
                 canvas.Children.Add(ellipse);
                 canvas.Children.Add(bouton);
                 // canvas.Children.Add(textBlock);
-
-                //ID:
-                // 72057594037940157
-                // 72057594037940223
-                // 72057594037940319
-                // 72057594037940333
-
-                // 72057594037928274
             }
         }
     }

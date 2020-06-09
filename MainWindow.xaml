@@ -1,4 +1,4 @@
-﻿<Window x:Class="LSL_Kinect.MainWindow"
+﻿<Window x:Name="Kinect_Capture" x:Class="LSL_Kinect.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -8,8 +8,8 @@
         Title="Kinect Capture"
         Loaded="MainWindow_Loaded"
         Closing="OnWindowClosing"
-        Height="800" Width="800"
-        KeyUp="Window_KeyUp">
+        SizeToContent = "WidthAndHeight"
+        KeyUp="OnKeyUp" ResizeMode="CanResizeWithGrip" ScrollViewer.VerticalScrollBarVisibility="Disabled">
     <Window.Resources>
         <SolidColorBrush x:Key="MediumGreyBrush" Color="#ff6e6e6e" />
         <SolidColorBrush x:Key="KinectPurpleBrush" Color="#ff52318f" />
@@ -18,19 +18,19 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="10" />
-            <RowDefinition Height="Auto" MinHeight="500"/>
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" MinHeight="500" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="10" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="10" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="10" />
         </Grid.ColumnDefinitions>
 
         <!--Upper part-->
-        <Image Grid.Row="1" Grid.Column="1" Name="camera"  MaxHeight="500" Stretch="Uniform"/>
-        <Canvas Grid.Row="1" Grid.Column="1"  Name="canvas" MaxHeight="500" MaxWidth="500"/>
+        <Image Grid.Row="1" Grid.Column="1" Name="camera"  MaxHeight="500" Stretch="Uniform" />
+        <Canvas Grid.Row="1" Grid.Column="1"  Name="canvas" MaxHeight="500" MaxWidth="500" />
 
         <!-- Inner bottom grid-->
         <Grid Grid.Row="2" Grid.Column="1">
@@ -46,22 +46,40 @@
 
             <!-- Row 0 -->
             <GroupBox Grid.Row="0" Grid.Column="0" Header="App Status" Margin="5">
-                <StackPanel   Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
-                    <Label Content="Kinect :" Margin="10" VerticalAlignment="Center" />
-                    <Ellipse x:Name="kinectStateIndicator" Fill="Red" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" Margin="5">
+                    <Label Content="Kinect :" Margin="10" />
+                    <Ellipse x:Name="kinectStateIndicator" Fill="Red" />
 
-                    <Label Content="Broadcasting :" Margin="10" VerticalAlignment="Center" />
-                    <Ellipse x:Name="broadcastingStateIndicator" Fill="Red" VerticalAlignment="Center"/>
+                    <Label Content="Broadcasting :" Margin="10" />
+                    <Ellipse x:Name="broadcastingStateIndicator" Fill="Red" />
 
-                    <Label Content="Recording :" Margin="10" VerticalAlignment="Center" />
-                    <Ellipse x:Name="recordingStateIndicator" Fill="Red"  VerticalAlignment="Center"/>
+                    <Label Content="Recording :" Margin="10" />
+                    <Ellipse x:Name="recordingStateIndicator" Fill="Red" />
                 </StackPanel>
             </GroupBox>
 
+            <GroupBox Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Header="Broadcast Markers" Margin="5">
+                <Grid Grid.Row="2" Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Grid.Row="0">
+                        <Button Grid.Row="0" Grid.Column="0" x:Name="broadcastButton" Content="Start Broadcast" Width="100"  Click="OnBroadcastButtonClicked"  Margin="5" />
+                        <Button Grid.Row="0" Grid.Column="1" x:Name="SendLslMarkerButton" Content="Send LSL Marker" Width="100"  Click="OnSendLSLClicked"  Margin="5" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Grid.Row="1">
+                        <Label  Content="LSL Marker sent : " Margin="5" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" Margin="5" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
+
             <!-- Row 1 -->
-            <GroupBox Grid.Row="1" Grid.Column="0" Header="Rendering Options" Margin="5">
+            <GroupBox Grid.Row="1" Grid.Column="0" Header="Body" Margin="5">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
-                    <Label Content="Skeletton ID : " Margin="10" VerticalAlignment="Center"/>
+                    <Label Content="Skeletton ID : " Margin="10" VerticalAlignment="Center" />
                     <TextBlock x:Name="trakingIdCourt" Text="-----" VerticalAlignment="Center" />
 
                     <Label Content="Complete Skeletton ID : " Margin="10" VerticalAlignment="Center" />
@@ -69,28 +87,20 @@
                 </StackPanel>
             </GroupBox>
 
-            <GroupBox Grid.Row="1" Grid.Column="1" Header="Broadcast Markers" Margin="5">
-                <StackPanel  Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
-                    <Button x:Name="LSLMarkerSendButton" Content="Send LSL Marker" Width="100"  Click="OnSendLSLClicked"  Margin="5" />
-                    <Label Content="LSL Marker sent : " VerticalAlignment="Center" Margin="5" />
-                    <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" VerticalAlignment="Center" Margin="5" />
-                </StackPanel>
-            </GroupBox>
-
             <!-- Row 2 -->
             <GroupBox  Grid.Row="2" Grid.Column="0" Header="Rendering Options" Margin="5">
                 <StackPanel Grid.Column="0" Grid.Row="2"  Orientation="Horizontal">
-                    <Button x:Name="color_btn" Grid.Column="0" Content="Couleur" Margin="5" Click="OnColorModeButtonClicked" />
-                    <Button x:Name="depth_btn" Grid.Column="1" Content="Profondeur" Margin="5" Click="OnDepthModeButtonClicked" />
-                    <Button x:Name="infraRed_btn" Grid.Column="2" Content="Infrarouge" Margin="5" Click="OnInfraredButtonClicked" />
-                    <Button x:Name="VisuTracking_btn" Grid.Column="3" Content="Visu Tracking" Margin="5" Click="OnBodyButtonIDCliked" />
+                    <Button x:Name="colorButton" Grid.Column="0" Content="Color" Margin="5" Click="OnColorModeButtonClicked" />
+                    <Button x:Name="depthButton" Grid.Column="1" Content="Depth" Margin="5" Click="OnDepthModeButtonClicked" />
+                    <Button x:Name="infraredButton" Grid.Column="2" Content="Infrared" Margin="5" Click="OnInfraredButtonClicked" />
+                    <Button x:Name="VisuTracking_btn" Grid.Column="3" Content="Visu Tracking" Margin="5" Click="OnVisualTrackingButtonClicked" />
                 </StackPanel>
             </GroupBox>
 
             <GroupBox Grid.Row="2" Grid.Column="1" Header="CSV" Margin="5">
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="record_btn" Content="Start Record" Click="OnRecordButtonClicked" Margin="5" />
-                    <Button x:Name="CSV_btn" Content="Export CSV" Click="OnCSVBtnClicked" IsEnabled="False" Margin="5" />
+                    <Button x:Name="recordButton" Content="Start Record" Click="OnRecordButtonClicked" Margin="5" />
+                    <Button x:Name="ExportCSVButton" Content="Export CSV" Click="OnCSVBtnClicked" Margin="5" />
                 </StackPanel>
             </GroupBox>
         </Grid>
