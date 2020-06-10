@@ -10,7 +10,7 @@ using System.Windows;
 
 namespace LSL_Kinect
 {
-    public static class Creation_Du_Bitmap
+    public static class BitmapGeneration
     {
         #region Members
         static WriteableBitmap _bitmap = null;

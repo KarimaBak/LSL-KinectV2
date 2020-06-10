@@ -10,6 +10,10 @@
             <Setter Property="Width" Value="80" />
             <Setter Property="Height" Value="35" />
         </Style>
+        <Style TargetType="Ellipse">
+            <Setter Property="Width" Value="15" />
+            <Setter Property="Height" Value="15" />
+        </Style>
 
     </Application.Resources>
 </Application>

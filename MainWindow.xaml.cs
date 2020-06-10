@@ -1,17 +1,20 @@
 ﻿using CsvHelper;
 using LSL;
+using LSL_Kinect.Classes;
 using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Shapes;
+using Brushes = System.Windows.Media.Brushes;
+using Path = System.IO.Path;
 
 namespace LSL_Kinect
 {
@@ -38,59 +41,33 @@ namespace LSL_Kinect
         #region Private Variables
 
         //-------------Variables-----------------------
+        private KinectSensor currentKinectSensor;
+
         private MultiSourceFrameReader readerMultiFrame;
 
-        private KinectSensor kinectSensor;
         private Body[] bodies = null;
-        private CameraMode _mode = CameraMode.Color;
-        private bool Fermeture_Du_Programme = false;
-        private Thread thUpdate_Rec_State;
-        private Thread thUpdate_Kinect_State;
-        private Thread thUpdate_Path_State;
-        private Thread thUpdate_Couleur_Boutton;
-        private CoordinateMapper coordinateMapper = null;
-        private int displayWidth;
-        private int displayHeight;
-        private List<Squelette> ListeDesSquelettes = new List<Squelette>();
-        private Stopwatch t0 = new Stopwatch();
-        private bool isRecording = false;
-        private string currentCSVpath = null;
+        private List<Drawing> skelettonsDrawing = new List<Drawing>();
+        private DataContextIdViewModel idWrapperList = new DataContextIdViewModel();
 
-        // PJE
-        private bool drawSkeletonOverCamera = true;
+        private BodyIdWrapper selectedBodyID = null;
 
-        private int spaceBarPressCounter = 0;
-
-        private Dessins dessin = new Dessins();
-
+        private double localClockStartingPoint = -1;
         private liblsl.StreamOutlet outletData = null;
         private liblsl.StreamOutlet outletMarker = null;
+        private int spaceBarPressCounter = 0;
 
         private DataTable currentDataTable = null;
-        private String currentCSVname = null;
+        private string currentCSVpath = null;
+
+        private CameraMode _mode = CameraMode.Color;
+        private bool drawSkeletonOverCamera = true;
+        private bool isKinectAvailable = false;
+        private bool isRecording = false;
+        private bool isBroadcasting = false;
 
         #endregion Private Variables
 
-        #region Properties
-
-        public string etat_Record
-        {
-            get { return (string)GetValue(etatRecordProperty); }
-            set { SetValue(etatRecordProperty, value); }
-        }
-
-        public string etat_Kinect
-        {
-            get { return (string)GetValue(etatKinectProperty); }
-            set { SetValue(etatKinectProperty, value); }
-        }
-
-
-        #endregion Properties
-
-        #region LSL Constante
-
-        /* PJE: partie LSL */
+        #region Constants
         private const int NUI_SKELETON_POSITION_COUNT = 25;
         private const int NUM_CHANNELS_PER_JOINT = 4;
         private const int NUM_CHANNELS_PER_SKELETON = (NUI_SKELETON_POSITION_COUNT * NUM_CHANNELS_PER_JOINT) + 2;
@@ -101,39 +78,231 @@ namespace LSL_Kinect
         public static readonly IList<String> jointInfoSuffix =
           new ReadOnlyCollection<string>(new List<String> { "_X", "_Y", "_Z", "_Conf" });
 
-        #endregion LSL Constante
+        #endregion Constants
 
-        //--------------------MAIN-------------------
         public MainWindow()
         {
-            InitializeComponent();
-            Initialise_Kinect();
-            Thread.Sleep(500);
-            Affiche_Etat_Kinect();
-            Affiche_Etat_Record();
-            Affiche_Etat_Boutton();
-            thUpdate_Kinect_State = new Thread(Update_Kinect_State);
-            thUpdate_Kinect_State.SetApartmentState(ApartmentState.STA);
-            thUpdate_Kinect_State.Start();
+            DataContext = idWrapperList;
 
-            //C'est un peu extrême
-            thUpdate_Couleur_Boutton = new Thread(Update_Couleur_Boutton);
-            thUpdate_Couleur_Boutton.Start();
+            InitializeComponent();
+
+            RegisterKinect();
+            InitiateDisplay();
+
+            SetLSLStreamInfo(currentKinectSensor.UniqueKinectId);
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private void InitiateDisplay()
         {
-            if (readerMultiFrame != null)
+            UpdateRenderingButtonsState();
+            UpdateVisualTrackingButtonState();
+            UpdateSendLslMarkerButton();
+            UpdateExportCSVButton();
+        }
+
+        private void RegisterKinect()
+        {
+            currentKinectSensor = KinectSensor.GetDefault();
+            currentKinectSensor.Open();
+            currentKinectSensor.IsAvailableChanged += OnKinectIsAvailableChanged;
+
+            readerMultiFrame =
+                currentKinectSensor.OpenMultiSourceFrameReader(FrameSourceTypes.Color | FrameSourceTypes.Body
+                | FrameSourceTypes.Depth | FrameSourceTypes.BodyIndex | FrameSourceTypes.Infrared);
+            readerMultiFrame.MultiSourceFrameArrived += ManageMultiSourceFrame;
+        }
+
+        private void SetLSLStreamInfo(String sensorId)
+        {
+            localClockStartingPoint = liblsl.local_clock();
+
+            liblsl.StreamInfo infoMetaData = new liblsl.StreamInfo("Kinect-LSL-MetaData", "!MoCap", NUM_CHANNELS_PER_STREAM, 30, liblsl.channel_format_t.cf_float32, sensorId);
+
+            liblsl.XMLElement channels = infoMetaData.desc().append_child("channels");
+            for (int skelettonID = 0; skelettonID < NUI_SKELETON_MAX_TRACKED_COUNT; skelettonID++)
             {
-                if (outletData == null || outletMarker == null)
+                for (int skelettonPosCount = 0; skelettonPosCount < NUI_SKELETON_POSITION_COUNT; skelettonPosCount++)
                 {
-                    SetLSLStreamInfo(kinectSensor.UniqueKinectId);
+                    String currentJointName = Enum.GetName(typeof(JointType), skelettonPosCount);
+
+                    //TODO Refactor
+                    channels.append_child("channel")
+                        .append_child_value("label", currentJointName + "_X")
+                        .append_child_value("type", "PositionX")
+                        .append_child_value("unit", "meters");
+                    channels.append_child("channel")
+                        .append_child_value("label", currentJointName + "_Y")
+                        .append_child_value("type", "PositionY")
+                        .append_child_value("unit", "meters");
+                    channels.append_child("channel")
+                        .append_child_value("label", currentJointName + "_Z")
+                        .append_child_value("type", "PositionZ")
+                        .append_child_value("unit", "meters");
+                    channels.append_child("channel")
+                        .append_child_value("label", currentJointName + "_Conf")
+                        .append_child_value("type", "Confidence")
+                        .append_child_value("unit", "normalized");
                 }
-                readerMultiFrame.MultiSourceFrameArrived += ManageMultiSourceFrame;
+                channels.append_child("channel")
+                    .append_child_value("label", "SkeletonTrackingId" + skelettonID)
+                    .append_child_value("type", "TrackingId");
+                channels.append_child("channel")
+                    .append_child_value("label", "SkeletonQualityFlags" + skelettonID);
+            }
+
+            // misc meta-data
+            infoMetaData.desc().append_child("acquisition")
+                .append_child_value("manufacturer", "Microsoft")
+                .append_child_value("model", "Kinect 2.0");
+
+            outletData = new liblsl.StreamOutlet(infoMetaData);
+
+            //Marker data
+            liblsl.StreamInfo streamMarker = new liblsl.StreamInfo("Kinect-LSL-Markers", "Markers", 1, 0, liblsl.channel_format_t.cf_string, sensorId);
+            outletMarker = new liblsl.StreamOutlet(streamMarker);
+        }
+
+        private void SendLslDataOneBodyTracked(float[] data)
+        {
+            outletData.push_sample(data, liblsl.local_clock() - localClockStartingPoint);
+        }
+
+        private float[] GetBodyData(Body body)
+        {
+            float[] data = new float[NUM_CHANNELS_PER_STREAM];
+            int channelIndex = 0, jointNumber = 0;
+
+            while (jointNumber < Enum.GetValues(typeof(JointType)).Length)
+            {
+                channelIndex = AddOneBodyJointData(data, channelIndex, body.Joints[(JointType)jointNumber]);
+                jointNumber++;
+            }
+
+            data[channelIndex++] = body.TrackingId;
+            data[channelIndex++] = (body.IsTracked) ? 1f : -1f;
+
+            return data;
+        }
+
+        private static int AddOneBodyJointData(float[] data, int channelIndex, Joint joint)
+        {
+            CameraSpacePoint jointPosition = joint.Position;
+            data[channelIndex++] = jointPosition.X;
+            data[channelIndex++] = jointPosition.Y;
+            data[channelIndex++] = jointPosition.Z;
+            data[channelIndex++] = (float)joint.TrackingState / 2.0f;
+            return channelIndex;
+        }
+
+        private Drawing CheckExistingSkeletons(ulong id)
+        {
+            foreach (Drawing skeleton in skelettonsDrawing)
+            {
+                if (skeleton.associatedBodyID.kinectID == id)
+                {
+                    return skeleton;
+                }
+            }
+            return null;
+        }
+
+        private void ManageMultiSourceFrame(object sender, MultiSourceFrameArrivedEventArgs frameArgs)
+        {
+            MultiSourceFrame acquiredFrame = frameArgs.FrameReference.AcquireFrame();
+            UpdateCameraImage(acquiredFrame);
+            GetBodiesData(acquiredFrame);
+            ManageBodiesData();
+        }
+
+        private void ManageBodiesData()
+        {
+            if (bodies != null)
+            {
+                foreach (var body in bodies)
+                {
+                    if (body.IsTracked)
+                    {
+                        ManageTrackedBody(body);
+                    }
+
+                    if (selectedBodyID != null && body.TrackingId == selectedBodyID.kinectID)
+                    {
+                        ManageSelectedBody(body);
+                    }
+                }
             }
         }
 
-        //Create a data table to store data
+        private void ManageSelectedBody(Body body)
+        {
+            float[] data = GetBodyData(body);
+
+            if (isBroadcasting)
+            {
+                SendLslDataOneBodyTracked(data);
+            }
+
+            if (isRecording)
+            {
+                AddRowToDataTable(data);
+            }
+        }
+
+        private void ManageTrackedBody(Body body)
+        {
+            Drawing correspondingSkeletton = CheckExistingSkeletons(body.TrackingId);
+
+            if (correspondingSkeletton == null)
+            {
+                BodyIdWrapper newWrapper = new BodyIdWrapper(body.TrackingId);
+                idWrapperList.AddData(newWrapper);
+
+                correspondingSkeletton = new Drawing(newWrapper);
+                skelettonsDrawing.Add(correspondingSkeletton);
+            }
+
+            if (drawSkeletonOverCamera)
+            {
+                correspondingSkeletton.DrawSkeleton(canvas, body);
+            }
+        }
+
+        private void GetBodiesData(MultiSourceFrame acquiredFrame)
+        {
+            using (BodyFrame bodyFrame = acquiredFrame.BodyFrameReference.AcquireFrame())
+            {
+                if (bodyFrame != null)
+                {
+                    canvas.Children.Clear();
+                    if (bodies == null)
+                    {
+                        bodies = new Body[bodyFrame.BodyFrameSource.BodyCount];
+                    }
+                    bodyFrame.GetAndRefreshBodyData(bodies);
+                }
+            }
+        }
+
+        #region Marker
+        private void SendMarker(string[] dataMarker)
+        {
+            outletMarker.push_sample(dataMarker, liblsl.local_clock() - localClockStartingPoint);
+        }
+
+        private void SendStartBroadcastMarker()
+        {
+            SendMarker(new string[] { "Start broadcasting" });
+        }
+
+        private void SendEndBroadcastMarker()
+        {
+            SendMarker(new string[] { "Stop broadcasting" });
+        }
+        #endregion Marker
+
+        #region CSV
+
+        //Create a data table to store body data
         private void CreateDataTable()
         {
             currentDataTable = new DataTable();
@@ -168,7 +337,7 @@ namespace LSL_Kinect
             if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 currentCSVpath = Path.GetDirectoryName(saveFileDialog.FileName);
-                //currentCSVpath = saveFileDialog.FileName;
+
                 using (var writer = new StreamWriter(saveFileDialog.FileName))
                 using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
                 {
@@ -192,317 +361,19 @@ namespace LSL_Kinect
             }
         }
 
-        private void SetLSLStreamInfo(String sensorId)
+        #endregion CSV
+
+        #region Display
+        private void UpdateKinectCaptureRelatedPanels()
         {
-            liblsl.StreamInfo infoMetaData = new liblsl.StreamInfo("Kinect-LSL-MetaData", "Kinect", NUM_CHANNELS_PER_STREAM, 30, liblsl.channel_format_t.cf_float32, sensorId);
-
-            liblsl.XMLElement channels = infoMetaData.desc().append_child("channels");
-            for (int skelettonID = 0; skelettonID < NUI_SKELETON_MAX_TRACKED_COUNT; skelettonID++)
-            {
-                for (int skelettonPosCount = 0; skelettonPosCount < NUI_SKELETON_POSITION_COUNT; skelettonPosCount++)
-                {
-                    String currentJointName = Enum.GetName(typeof(JointType), skelettonPosCount);
-
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_X")
-                        .append_child_value("type", "PositionX")
-                        .append_child_value("unit", "meters");
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_Y")
-                        .append_child_value("type", "PositionY")
-                        .append_child_value("unit", "meters");
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_Z")
-                        .append_child_value("type", "PositionZ")
-                        .append_child_value("unit", "meters");
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_Conf")
-                        .append_child_value("type", "Confidence")
-                        .append_child_value("unit", "normalized");
-                }
-                channels.append_child("channel")
-                    .append_child_value("label", "SkeletonTrackingId" + skelettonID)
-                    .append_child_value("type", "TrackingId");
-                channels.append_child("channel")
-                    .append_child_value("label", "SkeletonQualityFlags" + skelettonID);
-            }
-
-            // misc meta-data
-            infoMetaData.desc().append_child("acquisition")
-                .append_child_value("manufacturer", "Microsoft")
-                .append_child_value("model", "Kinect 2.0");
-
-            outletData = new liblsl.StreamOutlet(infoMetaData);
-
-            //Marker data
-            liblsl.StreamInfo streamMarker = new liblsl.StreamInfo("Kinect-LSL-Markers", "Kinect", 1, 0, liblsl.channel_format_t.cf_string, sensorId);
-            outletMarker = new liblsl.StreamOutlet(streamMarker);
+            Visibility visibility = (isKinectAvailable) ? Visibility.Visible : Visibility.Collapsed;
+            bodyTrackingPanel.Visibility = visibility;
+            cameraPanel.Visibility = visibility;
         }
 
-        private void SendLslDataOneBodyTracked(float[] data)
+        private void UpdateCameraImage(MultiSourceFrame acquiredFrame)
         {
-            // PJE
-            //Console.WriteLine("outletData.push_sample(data);   traking court: " + dessin.idSqueletteChoisi + " traking : " + body.TrackingId );
-            outletData.push_sample(data, liblsl.local_clock());
-        }
-
-        private float[] GetDataBody(Body body)
-        {
-            float[] data = new float[NUM_CHANNELS_PER_STREAM];// data length = 102 alors que (25 jointures) * 4 valeurs (x y z) + body.trackiId + isTracked
-
-            // Comparaison entre le numéro cours choisi par le bouton dans Dessins.cs et le numéro de squelette détecté.
-            String shortTrakingIdCalcul = (body.TrackingId - Dessins.KINECT_MINIMAL_ID).ToString();
-
-            if ((dessin.idSqueletteChoisi != -1) && (dessin.idSqueletteChoisi == Convert.ToInt64(shortTrakingIdCalcul)))
-            {
-                int channelIndex = 0, jointNumber = 0;
-
-                while (jointNumber < Enum.GetValues(typeof(JointType)).Length)
-                {
-                    channelIndex = BuildLSLData(data, channelIndex, body.Joints[(JointType)jointNumber]);
-                    jointNumber++;
-                }
-
-                data[channelIndex++] = body.TrackingId;
-                //PJE Test avec numéro squelette court ne pas utiliser l'ID court !!!
-                // data[i++] = Convert.ToInt64(shortTrakingIdCalcul);
-                data[channelIndex++] = (body.IsTracked) ? 1f : -1f;
-            }
-
-            return data;
-        }
-
-        private static int BuildLSLData(float[] data, int channelIndex, Joint joint)
-        {
-            CameraSpacePoint jointPosition = joint.Position;
-            data[channelIndex++] = jointPosition.X;
-            data[channelIndex++] = jointPosition.Y;
-            data[channelIndex++] = jointPosition.Z;
-            data[channelIndex++] = (float)joint.TrackingState / 2.0f;
-            return channelIndex;
-        }
-
-        private void SendLslDataAllBodies(String sensorId, Body[] bodies)
-        {
-            float[] data = new float[NUM_CHANNELS_PER_STREAM];
-            int i = 0;
-
-            foreach (var body in bodies)
-            {
-                if (body.IsTracked)
-                {
-                    // Comparaison entre le numéro cours choisi par le bouton dans Dessins.cs et le numéro de squelette détecté.
-                    String shortTrakingIdCalcul = (body.TrackingId - Dessins.KINECT_MINIMAL_ID).ToString();
-
-                    if ((dessin.idSqueletteChoisi != -1) && (dessin.idSqueletteChoisi.ToString() == shortTrakingIdCalcul))
-                    {
-                        foreach (Joint joint in body.Joints.Values)
-                        {
-                            CameraSpacePoint jointPosition = joint.Position;
-                            data[i++] = jointPosition.X;
-                            data[i++] = jointPosition.Y;
-                            data[i++] = jointPosition.Z;
-                            data[i++] = (float)joint.TrackingState / 2.0f; // 0.0, 0.5, or 1.0
-                        }
-                        data[i++] = body.TrackingId;
-                        if (body.IsTracked)
-                        {
-                            data[i++] = 1f;
-                        }
-                        else
-                        {
-                            data[i++] = -1f;
-                        }
-                        i++;
-                    }
-                }
-            }
-            outletData.push_sample(data, liblsl.local_clock());
-            // PJE Console.WriteLine("outletData.push_sample(data);   ");
-        }
-
-        // --------------------METHODES ET FONCTIONS-------------------
-
-        public static readonly DependencyProperty etatKinectProperty =
-            DependencyProperty.Register("etat_Kinect", typeof(string),
-                typeof(MainWindow), new PropertyMetadata(string.Empty));
-
-        public static readonly DependencyProperty etatRecordProperty =
-           DependencyProperty.Register("etat_Record", typeof(string),
-               typeof(MainWindow), new PropertyMetadata(string.Empty));
-
-        private void Affiche_Etat_Record()
-        {
-            if (isRecording == true)
-            {
-                this.etat_Record = "Record in Progress...";
-            }
-            else
-            {
-                this.etat_Record = " Waiting for a record ";
-            }
-        }
-
-        private void Affiche_Etat_Boutton()
-        {
-            if (_mode == CameraMode.Color)
-            {
-                color_btn.Background = System.Windows.Media.Brushes.LightGreen;
-                depth_btn.Background = System.Windows.Media.Brushes.LightBlue;
-                infraRed_btn.Background = System.Windows.Media.Brushes.LightBlue;
-            }
-            else if (_mode == CameraMode.Depth)
-            {
-                color_btn.Background = System.Windows.Media.Brushes.LightBlue;
-                depth_btn.Background = System.Windows.Media.Brushes.LightGreen;
-                infraRed_btn.Background = System.Windows.Media.Brushes.LightBlue;
-            }
-            else if (_mode == CameraMode.Infrared)
-            {
-                color_btn.Background = System.Windows.Media.Brushes.LightBlue;
-                depth_btn.Background = System.Windows.Media.Brushes.LightBlue;
-                infraRed_btn.Background = System.Windows.Media.Brushes.LightGreen;
-            }
-            else
-            {
-                color_btn.Background = System.Windows.Media.Brushes.Red;
-                depth_btn.Background = System.Windows.Media.Brushes.Red;
-                infraRed_btn.Background = System.Windows.Media.Brushes.Red;
-            }
-
-            if (drawSkeletonOverCamera)
-                VisuTracking_btn.Background = System.Windows.Media.Brushes.LightGreen;
-            else
-                VisuTracking_btn.Background = System.Windows.Media.Brushes.LightBlue;
-        }
-
-        private void Affiche_Etat_Kinect()
-        {
-            if (kinectSensor != null)
-            {
-                if (this.kinectSensor.IsOpen)
-                {
-                    this.etat_Kinect = "Open...";
-                }
-                else
-                {
-                    this.etat_Kinect = "Not open";
-                }
-            }
-        }
-
-        private void Initialise_Kinect()
-        {
-            kinectSensor = KinectSensor.GetDefault();
-            if (kinectSensor != null)
-            {
-                kinectSensor.Open();
-                Fermeture_Du_Programme = false;
-
-                //// open the reader for the body frames
-                readerMultiFrame = kinectSensor.OpenMultiSourceFrameReader(FrameSourceTypes.Color | FrameSourceTypes.Body | FrameSourceTypes.Depth | FrameSourceTypes.BodyIndex | FrameSourceTypes.Infrared);
-                this.coordinateMapper = this.kinectSensor.CoordinateMapper;
-                this.displayWidth = kinectSensor.ColorFrameSource.FrameDescription.Width;
-                this.displayHeight = kinectSensor.ColorFrameSource.FrameDescription.Height;
-            }
-            else
-                Console.WriteLine("Could not obtain KinectSensor");
-        }
-
-        private void ManageMultiSourceFrame(object sender, MultiSourceFrameArrivedEventArgs frameArgs)
-        {
-            MultiSourceFrame acquiredFrame = frameArgs.FrameReference.AcquireFrame();
-            SetCameraImage(acquiredFrame);
-            GetBodiesData(acquiredFrame);
-
-            if (bodies != null)
-            {
-                //PJE LSL
-                // SendLslDataAllBodies(kinectSensor.UniqueKinectId , bodies);
-
-                foreach (var body in bodies)
-                {
-                    if (body.IsTracked)
-                    {
-                        int id = Reduction_Id_Body(bodies, body);
-                        float[] data = GetDataBody(body);
-                        // PJE
-                        SendLslDataOneBodyTracked(data);
-
-                        //Update ID labels
-                        UpdateSkelettonIDText(body);
-
-                        // COORDINATE MAPPING
-                        foreach (Joint joint in body.Joints.Values)
-                        {
-                            // 3D space point
-                            CameraSpacePoint jointPosition = joint.Position;
-                            if (isRecording)
-                            {
-                                AddRowToDataTable(data);
-
-                                //Unused
-                                //t0.Start();
-                                //ListeDesSquelettes.Add(new Squelette(t0.ElapsedMilliseconds,
-                                //   id, jointPosition.X, jointPosition.Y,
-                                //    jointPosition.Z, joint.JointType, AbregeHandState(body.HandLeftState), AbregeHandConfidence(body.HandLeftConfidence)
-                                //    , AbregeHandState(body.HandRightState), AbregeHandConfidence(body.HandRightConfidence), AbregeTrackingState(joint.TrackingState)));
-                                //Unused
-                            }
-
-                            //Unused
-                            //// 2D space point
-                            //Point point = new Point();
-
-                            //if (_mode == CameraMode.Color)
-                            //{
-                            //    ColorSpacePoint colorPoint =
-                            //        kinectSensor.CoordinateMapper.MapCameraPointToColorSpace(
-                            //            jointPosition);
-
-                            //    point.X = float.IsInfinity(colorPoint.X) ? 0 : colorPoint.X;
-                            //    point.Y = float.IsInfinity(colorPoint.Y) ? 0 : colorPoint.Y;
-                            //}
-                            //else if (_mode == CameraMode.Depth || _mode == CameraMode.Infrared)
-                            //{
-                            //    DepthSpacePoint depthPoint
-                            //        = kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(
-                            //            jointPosition);
-
-                            //    point.X = float.IsInfinity(depthPoint.X) ? 0 : depthPoint.X;
-                            //    point.Y = float.IsInfinity(depthPoint.Y) ? 0 : depthPoint.Y;
-                            //}
-                            //Unused
-                        }
-                    }
-
-                    if (drawSkeletonOverCamera)
-                    {
-                        dessin.DrawSkeleton(canvas, body);
-                    }
-                }
-            }
-        }
-
-        private void GetBodiesData(MultiSourceFrame acquiredFrame)
-        {
-            // Body
-            using (BodyFrame bodyFrame = acquiredFrame.BodyFrameReference.AcquireFrame())
-            {
-                if (bodyFrame != null)
-                {
-                    canvas.Children.Clear();
-                    if (this.bodies == null)
-                    {
-                        bodies = new Body[bodyFrame.BodyFrameSource.BodyCount];
-                    }
-                    bodyFrame.GetAndRefreshBodyData(bodies);
-                }
-            }
-        }
-
-        private void SetCameraImage(MultiSourceFrame acquiredFrame)
-        {
+            //TODO Refactor
             //Color
             using (var frame = acquiredFrame.ColorFrameReference.AcquireFrame())
             {
@@ -540,10 +411,223 @@ namespace LSL_Kinect
             }
         }
 
-        private void UpdateSkelettonIDText(Body body)
+        private void UpdateRenderingButtonsState()
         {
-            trakingIdCourt.Text = dessin.idSqueletteChoisi.ToString();
-            trakingIdFull.Text = body.TrackingId.ToString();
+            colorButton.Background = Brushes.LightGray;
+            depthButton.Background = Brushes.LightGray;
+            infraredButton.Background = Brushes.LightGray;
+
+            if (_mode == CameraMode.Color)
+            {
+                colorButton.Background = Brushes.LightGreen;
+            }
+            else if (_mode == CameraMode.Depth)
+            {
+                depthButton.Background = Brushes.LightGreen;
+            }
+            else if (_mode == CameraMode.Infrared)
+            {
+                infraredButton.Background = Brushes.LightGreen;
+            }
+        }
+
+        private void UpdateSendLslMarkerButton()
+        {
+            SendLslMarkerButton.IsEnabled = isBroadcasting;
+        }
+
+        private void UpdateExportCSVButton()
+        {
+            ExportCSVButton.IsEnabled = !isRecording;
+        }
+
+        private void UpdateBroadcastState()
+        {
+            isBroadcasting = !isBroadcasting;
+            if (isBroadcasting)
+                SendStartBroadcastMarker();
+            else
+                SendEndBroadcastMarker();
+
+            UpdateIndicator(broadcastingStateIndicator, isBroadcasting);
+            broadcastButton.Content = (isBroadcasting == true) ? "Stop broadcast" : "Start broadcast";
+        }
+
+        private void UpdateRecordState()
+        {
+            isRecording = !isRecording;
+            UpdateIndicator(recordingStateIndicator, isRecording);
+            recordButton.Content = (isRecording == true) ? "Stop record" : "Start record";
+        }
+
+        private void UpdateIndicator(Ellipse currentIndicator, bool status)
+        {
+            currentIndicator.Fill = (status) ? Brushes.Green : Brushes.Red;
+        }
+
+        private void UpdateVisualTrackingButtonState()
+        {
+            VisuTracking_btn.Background = (drawSkeletonOverCamera) ? Brushes.LightGreen : Brushes.LightBlue;
+        }
+
+        #endregion Display
+
+        #region Events
+
+        private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
+        {
+
+            isKinectAvailable = args.IsAvailable;
+            UpdateKinectCaptureRelatedPanels();
+
+            UpdateIndicator(kinectStateIndicator, isKinectAvailable);
+        }
+
+        private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnWindowClosing(object sender, CancelEventArgs e)
+        {
+            if (this.readerMultiFrame != null)
+            {
+                this.readerMultiFrame.Dispose();
+                this.readerMultiFrame = null;
+            }
+
+            if (this.currentKinectSensor != null)
+            {
+                this.currentKinectSensor.Close();
+                this.currentKinectSensor = null;
+            }
+        }
+
+        private void OnIdListSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            broadcastPanel.Visibility = Visibility.Visible;
+            csvPanel.Visibility = Visibility.Visible;
+
+            System.Windows.Controls.ComboBox comboBox = (sender as System.Windows.Controls.ComboBox);
+            selectedBodyID = (BodyIdWrapper)comboBox.SelectedItem;
+        }
+
+        #region Button Event
+
+        private void OnBroadcastButtonClicked(object sender, RoutedEventArgs e)
+        {
+            UpdateBroadcastState();
+            UpdateSendLslMarkerButton();
+        }
+
+        private void OnRecordButtonClicked(object sender, RoutedEventArgs e)
+        {
+            UpdateRecordState();
+            UpdateExportCSVButton();
+
+            if (isRecording == true)
+            {
+                CreateDataTable();
+            }
+        }
+
+        private void OnColorModeButtonClicked(object sender, RoutedEventArgs e)
+        {
+            _mode = CameraMode.Color;
+            UpdateRenderingButtonsState();
+        }
+
+        private void OnDepthModeButtonClicked(object sender, RoutedEventArgs e)
+        {
+            _mode = CameraMode.Depth;
+            UpdateRenderingButtonsState();
+        }
+
+        private void OnInfraredButtonClicked(object sender, RoutedEventArgs e)
+        {
+            _mode = CameraMode.Infrared;
+            UpdateRenderingButtonsState();
+        }
+
+        private void OnVisualTrackingButtonClicked(object sender, RoutedEventArgs e)
+        {
+            drawSkeletonOverCamera = !drawSkeletonOverCamera;
+            UpdateVisualTrackingButtonState();
+        }
+
+        private void OnCSVBtnClicked(object sender, RoutedEventArgs e)
+        {
+            if (currentDataTable != null)
+            {
+                WriteCSVFile(currentDataTable);
+            }
+        }
+
+        private void OnSendLSLClicked(object sender, RoutedEventArgs e)
+        {
+            spaceBarPressCounter++;
+            String[] dataMarker = new String[] { spaceBarPressCounter.ToString(), spaceBarPressCounter.ToString() };
+            SendMarker(dataMarker);
+            LslNumberSpaceBarPress.Text = (spaceBarPressCounter - 1) + " at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
+        }
+
+        
+
+        #endregion Button Event
+
+        #region Keyboard event
+
+        private void OnKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Space)
+            {
+                OnSendLSLClicked(null, null);
+            }
+        }
+
+        #endregion Keyboard event
+
+        #endregion Events
+
+        #region Old code
+
+        /* Unused
+        /*
+        private void SendLslDataAllBodies(String sensorId, Body[] bodies)
+        {
+            float[] data = new float[NUM_CHANNELS_PER_STREAM];
+            int i = 0;
+
+            foreach (var body in bodies)
+            {
+                if (body.IsTracked)
+                {
+                    // Comparaison entre le numéro cours choisi par le bouton dans Dessins.cs et le numéro de squelette détecté.
+                    String shortTrakingIdCalcul = (body.TrackingId - Drawing.KINECT_MINIMAL_ID).ToString();
+
+                    if ((dessin.idSqueletteChoisi != -1) && (dessin.idSqueletteChoisi.ToString() == shortTrakingIdCalcul))
+                    {
+                        foreach (Joint joint in body.Joints.Values)
+                        {
+                            CameraSpacePoint jointPosition = joint.Position;
+                            data[i++] = jointPosition.X;
+                            data[i++] = jointPosition.Y;
+                            data[i++] = jointPosition.Z;
+                            data[i++] = (float)joint.TrackingState / 2.0f; // 0.0, 0.5, or 1.0
+                        }
+                        data[i++] = body.TrackingId;
+                        if (body.IsTracked)
+                        {
+                            data[i++] = 1f;
+                        }
+                        else
+                        {
+                            data[i++] = -1f;
+                        }
+                        i++;
+                    }
+                }
+            }
+            outletData.push_sample(data, liblsl.local_clock());
         }
 
         private int Reduction_Id_Body(Body[] _bodies, Body _body)
@@ -557,152 +641,6 @@ namespace LSL_Kinect
             return id;
         }
 
-        private void Window_Closing(object sender, CancelEventArgs e)
-        {
-            if (this.readerMultiFrame != null)
-            {
-                this.readerMultiFrame.Dispose();
-                this.readerMultiFrame = null;
-            }
-
-            if (this.kinectSensor != null)
-            {
-                this.kinectSensor.Close();
-                this.kinectSensor = null;
-            }
-            Fermeture_Du_Programme = true;
-
-            if (this.thUpdate_Kinect_State != null)
-            {
-                thUpdate_Kinect_State.Abort();
-            }
-            if (this.thUpdate_Rec_State != null)
-            {
-                thUpdate_Rec_State.Abort();
-            }
-        }
-
-        private void Update_Rec_State()
-        {
-            Thread.Sleep(TimeSpan.FromMilliseconds(5));
-            this.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                Affiche_Etat_Record();
-            }));
-        }
-
-        private void Update_Kinect_State()
-        {
-            while (!Fermeture_Du_Programme)
-            {
-                Thread.Sleep(TimeSpan.FromMilliseconds(5));
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Kinect();
-                }));
-            }
-        }
-
-        private void Update_Couleur_Boutton()
-        {
-            while (!Fermeture_Du_Programme)
-            {
-                Thread.Sleep(TimeSpan.FromMilliseconds(5));
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Boutton();
-                }));
-            }
-        }
-
-        #region Button Event
-
-        private void OnRecordButtonClicked(object sender, RoutedEventArgs e)
-        {
-            isRecording = !isRecording;
-            if (isRecording == true)
-            {
-                CreateDataTable();
-
-                CSV_btn.IsEnabled = false;
-                //Trop extrême
-                thUpdate_Rec_State = new Thread(Update_Rec_State);
-                thUpdate_Rec_State.SetApartmentState(ApartmentState.STA);
-                thUpdate_Rec_State.Start();
-                record_btn.Content = "Stop record";
-            }
-            else
-            {
-                t0.Reset();
-
-                CSV_btn.IsEnabled = true;
-                record_btn.Content = "Start record";
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Affiche_Etat_Record();
-                }));
-            }
-        }
-
-        private void Button_Click_Color(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Color;
-        }
-
-        private void Button_Click_Depth(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Depth;
-        }
-
-        private void Button_Click_IR(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Infrared;
-        }
-
-        private void Button_Click_Body(object sender, RoutedEventArgs e)
-        {
-            drawSkeletonOverCamera = !drawSkeletonOverCamera;
-        }
-
-        private void CSV_btn_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                WriteCSVFile(currentDataTable);
-                //Ecrire_CSV();
-                //Initialise_BkgwrLireServeur();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show(ex.Message, "Erreur dans CSV_button_Click");
-            }
-        }
-
-        private void OnSendLSLClicked(object sender, RoutedEventArgs e)
-        {
-            spaceBarPressCounter++;
-            String[] dataMarker = new String[] { spaceBarPressCounter.ToString() };
-            outletMarker.push_sample(dataMarker, liblsl.local_clock());
-            LslNumberSpaceBarPress.Text = "" + (spaceBarPressCounter - 1) + "    at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
-        }
-
-        #endregion Button Event
-
-        #region Keyboard event
-
-        private void Window_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == System.Windows.Input.Key.Space)
-            {
-                OnSendLSLClicked(null, null);
-            }
-        }
-
-        #endregion Keyboard event
-
-        #region Old code
-
-        /* Unused
       private void Ecrire_CSV(DataTable _dataTable, string _nomFichier)
       {
           NumberFormatInfo nfi = new NumberFormatInfo();
