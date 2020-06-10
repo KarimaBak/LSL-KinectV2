@@ -1,15 +1,16 @@
 ﻿using CsvHelper;
 using LSL;
+using LSL_Kinect.Classes;
 using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Shapes;
 using Brushes = System.Windows.Media.Brushes;
@@ -46,9 +47,11 @@ namespace LSL_Kinect
 
         private Body[] bodies = null;
         private List<Drawing> skelettonsDrawing = new List<Drawing>();
-        private bool isOneBodySelected = false;
-        private ulong selectedBodyID = 0;
+        private DataContextIdViewModel idWrapperList = new DataContextIdViewModel();
 
+        private BodyIdWrapper selectedBodyID = null;
+
+        private double localClockStartingPoint = -1;
         private liblsl.StreamOutlet outletData = null;
         private liblsl.StreamOutlet outletMarker = null;
         private int spaceBarPressCounter = 0;
@@ -62,12 +65,9 @@ namespace LSL_Kinect
         private bool isRecording = false;
         private bool isBroadcasting = false;
 
-        private Stopwatch t0 = new Stopwatch();
-
         #endregion Private Variables
 
-        #region LSL Constante
-
+        #region Constants
         private const int NUI_SKELETON_POSITION_COUNT = 25;
         private const int NUM_CHANNELS_PER_JOINT = 4;
         private const int NUM_CHANNELS_PER_SKELETON = (NUI_SKELETON_POSITION_COUNT * NUM_CHANNELS_PER_JOINT) + 2;
@@ -78,14 +78,18 @@ namespace LSL_Kinect
         public static readonly IList<String> jointInfoSuffix =
           new ReadOnlyCollection<string>(new List<String> { "_X", "_Y", "_Z", "_Conf" });
 
-        #endregion LSL Constante
+        #endregion Constants
 
         public MainWindow()
         {
+            DataContext = idWrapperList;
+
             InitializeComponent();
 
             RegisterKinect();
             InitiateDisplay();
+
+            SetLSLStreamInfo(currentKinectSensor.UniqueKinectId);
         }
 
         private void InitiateDisplay()
@@ -110,6 +114,8 @@ namespace LSL_Kinect
 
         private void SetLSLStreamInfo(String sensorId)
         {
+            localClockStartingPoint = liblsl.local_clock();
+
             liblsl.StreamInfo infoMetaData = new liblsl.StreamInfo("Kinect-LSL-MetaData", "!MoCap", NUM_CHANNELS_PER_STREAM, 30, liblsl.channel_format_t.cf_float32, sensorId);
 
             liblsl.XMLElement channels = infoMetaData.desc().append_child("channels");
@@ -152,13 +158,13 @@ namespace LSL_Kinect
             outletData = new liblsl.StreamOutlet(infoMetaData);
 
             //Marker data
-            liblsl.StreamInfo streamMarker = new liblsl.StreamInfo("Kinect-LSL-Markers", "Kinect", 1, 0, liblsl.channel_format_t.cf_string, sensorId);
+            liblsl.StreamInfo streamMarker = new liblsl.StreamInfo("Kinect-LSL-Markers", "Markers", 1, 0, liblsl.channel_format_t.cf_string, sensorId);
             outletMarker = new liblsl.StreamOutlet(streamMarker);
         }
 
         private void SendLslDataOneBodyTracked(float[] data)
         {
-            outletData.push_sample(data, liblsl.local_clock());
+            outletData.push_sample(data, liblsl.local_clock() - localClockStartingPoint);
         }
 
         private float[] GetBodyData(Body body)
@@ -192,7 +198,7 @@ namespace LSL_Kinect
         {
             foreach (Drawing skeleton in skelettonsDrawing)
             {
-                if (skeleton.associatedBodyID == id)
+                if (skeleton.associatedBodyID.kinectID == id)
                 {
                     return skeleton;
                 }
@@ -216,15 +222,13 @@ namespace LSL_Kinect
                 {
                     if (body.IsTracked)
                     {
-                        DrawSkeletonFromBody(body);
+                        ManageTrackedBody(body);
                     }
 
-                    if (isOneBodySelected && body.TrackingId == selectedBodyID)
+                    if (selectedBodyID != null && body.TrackingId == selectedBodyID.kinectID)
                     {
                         ManageSelectedBody(body);
                     }
-
-                    //TODO ADD BODIES ID TO LIST BOX
                 }
             }
         }
@@ -244,13 +248,16 @@ namespace LSL_Kinect
             }
         }
 
-        private void DrawSkeletonFromBody(Body body)
+        private void ManageTrackedBody(Body body)
         {
             Drawing correspondingSkeletton = CheckExistingSkeletons(body.TrackingId);
 
             if (correspondingSkeletton == null)
             {
-                correspondingSkeletton = new Drawing(body.TrackingId);
+                BodyIdWrapper newWrapper = new BodyIdWrapper(body.TrackingId);
+                idWrapperList.AddData(newWrapper);
+
+                correspondingSkeletton = new Drawing(newWrapper);
                 skelettonsDrawing.Add(correspondingSkeletton);
             }
 
@@ -275,6 +282,23 @@ namespace LSL_Kinect
                 }
             }
         }
+
+        #region Marker
+        private void SendMarker(string[] dataMarker)
+        {
+            outletMarker.push_sample(dataMarker, liblsl.local_clock() - localClockStartingPoint);
+        }
+
+        private void SendStartBroadcastMarker()
+        {
+            SendMarker(new string[] { "Start broadcasting" });
+        }
+
+        private void SendEndBroadcastMarker()
+        {
+            SendMarker(new string[] { "Stop broadcasting" });
+        }
+        #endregion Marker
 
         #region CSV
 
@@ -340,9 +364,16 @@ namespace LSL_Kinect
         #endregion CSV
 
         #region Display
+        private void UpdateKinectCaptureRelatedPanels()
+        {
+            Visibility visibility = (isKinectAvailable) ? Visibility.Visible : Visibility.Collapsed;
+            bodyTrackingPanel.Visibility = visibility;
+            cameraPanel.Visibility = visibility;
+        }
 
         private void UpdateCameraImage(MultiSourceFrame acquiredFrame)
         {
+            //TODO Refactor
             //Color
             using (var frame = acquiredFrame.ColorFrameReference.AcquireFrame())
             {
@@ -380,13 +411,6 @@ namespace LSL_Kinect
             }
         }
 
-        //TODO : Rebind
-        private void UpdateSkelettonIDText()
-        {
-            trakingIdCourt.Text = selectedBodyID.ToString();
-            trakingIdFull.Text = Convert.ToInt64(selectedBodyID).ToString();
-        }
-
         private void UpdateRenderingButtonsState()
         {
             colorButton.Background = Brushes.LightGray;
@@ -420,6 +444,11 @@ namespace LSL_Kinect
         private void UpdateBroadcastState()
         {
             isBroadcasting = !isBroadcasting;
+            if (isBroadcasting)
+                SendStartBroadcastMarker();
+            else
+                SendEndBroadcastMarker();
+
             UpdateIndicator(broadcastingStateIndicator, isBroadcasting);
             broadcastButton.Content = (isBroadcasting == true) ? "Stop broadcast" : "Start broadcast";
         }
@@ -436,22 +465,25 @@ namespace LSL_Kinect
             currentIndicator.Fill = (status) ? Brushes.Green : Brushes.Red;
         }
 
+        private void UpdateVisualTrackingButtonState()
+        {
+            VisuTracking_btn.Background = (drawSkeletonOverCamera) ? Brushes.LightGreen : Brushes.LightBlue;
+        }
+
         #endregion Display
 
         #region Events
 
         private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
         {
-            isKinectAvailable = args.IsAvailable;
-            UpdateIndicator(kinectStateIndicator, isKinectAvailable);
 
-            if (isKinectAvailable)
-            {
-                SetLSLStreamInfo(currentKinectSensor.UniqueKinectId);
-            }
+            isKinectAvailable = args.IsAvailable;
+            UpdateKinectCaptureRelatedPanels();
+
+            UpdateIndicator(kinectStateIndicator, isKinectAvailable);
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
         {
         }
 
@@ -470,6 +502,15 @@ namespace LSL_Kinect
             }
         }
 
+        private void OnIdListSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            broadcastPanel.Visibility = Visibility.Visible;
+            csvPanel.Visibility = Visibility.Visible;
+
+            System.Windows.Controls.ComboBox comboBox = (sender as System.Windows.Controls.ComboBox);
+            selectedBodyID = (BodyIdWrapper)comboBox.SelectedItem;
+        }
+
         #region Button Event
 
         private void OnBroadcastButtonClicked(object sender, RoutedEventArgs e)
@@ -486,11 +527,6 @@ namespace LSL_Kinect
             if (isRecording == true)
             {
                 CreateDataTable();
-            }
-            else
-            {
-                //TODO Remove or use
-                t0.Reset();
             }
         }
 
@@ -518,11 +554,6 @@ namespace LSL_Kinect
             UpdateVisualTrackingButtonState();
         }
 
-        private void UpdateVisualTrackingButtonState()
-        {
-            VisuTracking_btn.Background = (drawSkeletonOverCamera) ? Brushes.LightGreen : Brushes.LightBlue;
-        }
-
         private void OnCSVBtnClicked(object sender, RoutedEventArgs e)
         {
             if (currentDataTable != null)
@@ -534,10 +565,12 @@ namespace LSL_Kinect
         private void OnSendLSLClicked(object sender, RoutedEventArgs e)
         {
             spaceBarPressCounter++;
-            String[] dataMarker = new String[] { spaceBarPressCounter.ToString() };
-            outletMarker.push_sample(dataMarker, liblsl.local_clock());
+            String[] dataMarker = new String[] { spaceBarPressCounter.ToString(), spaceBarPressCounter.ToString() };
+            SendMarker(dataMarker);
             LslNumberSpaceBarPress.Text = (spaceBarPressCounter - 1) + " at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
         }
+
+        
 
         #endregion Button Event
 

@@ -1,31 +1,26 @@
-﻿using Microsoft.Kinect;
-using System;
-using System.CodeDom;
+﻿using LSL_Kinect.Classes;
+using Microsoft.Kinect;
 using System.Collections.Generic;
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 
 namespace LSL_Kinect
 {
     public class Drawing
     {
-        public const long KINECT_MINIMAL_ID = 72057594037900000;
         private const float skeletonMaxX = 1;
         private const float skeletonMinX = -1;
         private const float skeletonMaxY= 1;
         private const float skeletonMinY = -1;
 
-        public ulong associatedBodyID = 0;
+        public BodyIdWrapper associatedBodyID = null;
 
         private Label IdLabel = new Label(){ FontSize = 30, Background = Brushes.White };
 
-        public Drawing(ulong id)
+        public Drawing(BodyIdWrapper _idWrapper)
         {
-            associatedBodyID = id;
+            associatedBodyID = _idWrapper;
         }
 
         public Joint ScaleTo(Joint joint, double width, double height)
@@ -114,7 +109,7 @@ namespace LSL_Kinect
 
                 Canvas.SetLeft(IdLabel, headJoint.Position.X + (IdLabel.ActualWidth * 0.5));
                 Canvas.SetTop(IdLabel, headJoint.Position.Y - (IdLabel.ActualHeight * 0.5));
-                IdLabel.Content = (id - KINECT_MINIMAL_ID).ToString();
+                IdLabel.Content = associatedBodyID.shortIDString;
                 if (canvas.Children.IndexOf(IdLabel) == -1)
                 {
                     canvas.Children.Add(IdLabel);
@@ -218,6 +213,7 @@ namespace LSL_Kinect
             canvas.Children.Add(line);
         }
 
+        /* Unused
         public void DrawIdv0(Canvas canvas, Joint head, ulong id)
         {
             if (head.TrackingState == TrackingState.Tracked)
@@ -236,7 +232,7 @@ namespace LSL_Kinect
                 TextBlock textBlock = new TextBlock
                 {
                     FontSize = 30,
-                    Text = (id - KINECT_MINIMAL_ID).ToString()
+                    Text = shortID;
                 };
                 Canvas.SetLeft(textBlock, joint.Position.X - 2.3 * ellipse.Width / 2);
                 Canvas.SetTop(textBlock, joint.Position.Y - ellipse.Height / 2);
@@ -249,11 +245,12 @@ namespace LSL_Kinect
                 Canvas.SetLeft(bouton, joint.Position.X - 2.3 * ellipse.Width / 2);
                 Canvas.SetTop(bouton, joint.Position.Y - ellipse.Height / 2);
 
-                bouton.Content = (id - KINECT_MINIMAL_ID).ToString();
+                bouton.Content = shortID;
                 canvas.Children.Add(ellipse);
                 canvas.Children.Add(bouton);
                 // canvas.Children.Add(textBlock);
             }
-        }
+        
+        }*/
     }
 }
