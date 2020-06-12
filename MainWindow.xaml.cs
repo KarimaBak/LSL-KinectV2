@@ -4,7 +4,6 @@ using LSL_Kinect.Classes;
 using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
@@ -27,12 +26,21 @@ namespace LSL_Kinect
         Infrared
     }
 
-    internal enum NUI_SKELETON_TRACKING_STATE
+    internal enum MoCapChannelType
     {
-        NUI_SKELETON_NOT_TRACKED = 0,
-        NUI_SKELETON_POSITION_ONLY,
-        NUI_SKELETON_TRACKED
-    };
+        PositionX,
+        PositionY,
+        PositionZ,
+        Confidence
+    }
+
+    internal enum JointValueNameSuffix
+    {
+        _X,
+        _Y,
+        _Z,
+        _Conf
+    }
 
     #endregion enum
 
@@ -68,15 +76,16 @@ namespace LSL_Kinect
         #endregion Private Variables
 
         #region Constants
-        private const int NUI_SKELETON_POSITION_COUNT = 25;
-        private const int NUM_CHANNELS_PER_JOINT = 4;
-        private const int NUM_CHANNELS_PER_SKELETON = (NUI_SKELETON_POSITION_COUNT * NUM_CHANNELS_PER_JOINT) + 2;
-        private const int NUI_SKELETON_MAX_TRACKED_COUNT = 1;
-        private const int NUM_CHANNELS_PER_STREAM = NUI_SKELETON_MAX_TRACKED_COUNT * NUM_CHANNELS_PER_SKELETON;
-        private const int NUI_MAX_SKELETON_COUNT = 6;
 
-        public static readonly IList<String> jointInfoSuffix =
-          new ReadOnlyCollection<string>(new List<String> { "_X", "_Y", "_Z", "_Conf" });
+        private const int JOINT_COUNT = 25;
+        private const int CHANNELS_PER_JOINT = 4;
+        private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT);
+        private const int MAX_SKELETON_TRACKED = 1;
+
+        /* Can be used if we decide to track multiple skeletons at the same time
+        private const int CHANNELS_PER_STREAM = MAX_SKELETON_TRACKED * CHANNELS_PER_SKELETON;
+        private const int MAX_SKELETON_COUNT = 6;
+        */
 
         #endregion Constants
 
@@ -89,7 +98,7 @@ namespace LSL_Kinect
             RegisterKinect();
             InitiateDisplay();
 
-            SetLSLStreamInfo(currentKinectSensor.UniqueKinectId);
+            SetLSLStreamInfo();
         }
 
         private void InitiateDisplay()
@@ -112,54 +121,56 @@ namespace LSL_Kinect
             readerMultiFrame.MultiSourceFrameArrived += ManageMultiSourceFrame;
         }
 
-        private void SetLSLStreamInfo(String sensorId)
+        private void SetLSLStreamInfo()
         {
             localClockStartingPoint = liblsl.local_clock();
+            SetMoCapStreamDefinition();
+            SetMarkersStreamDefinition();
+        }
 
-            liblsl.StreamInfo infoMetaData = new liblsl.StreamInfo("Kinect-LSL-MetaData", "!MoCap", NUM_CHANNELS_PER_STREAM, 30, liblsl.channel_format_t.cf_float32, sensorId);
+        private void SetMarkersStreamDefinition()
+        {
+            liblsl.StreamInfo streamMarker = new liblsl.StreamInfo("EuroMov-Markers-Kinect", "Markers", 1, 0, liblsl.channel_format_t.cf_string, currentKinectSensor.UniqueKinectId);
+            outletMarker = new liblsl.StreamOutlet(streamMarker);
+        }
 
-            liblsl.XMLElement channels = infoMetaData.desc().append_child("channels");
-            for (int skelettonID = 0; skelettonID < NUI_SKELETON_MAX_TRACKED_COUNT; skelettonID++)
+        private void SetMoCapStreamDefinition()
+        {
+            liblsl.StreamInfo mocapStreamMetaData =
+                            new liblsl.StreamInfo("EuroMov-!Mocap-Kinect", "!MoCap",
+                            CHANNELS_PER_SKELETON, 30, liblsl.channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
+
+            liblsl.XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
+
+            for (int skeletonNumber = 0; skeletonNumber < MAX_SKELETON_TRACKED; skeletonNumber++)
             {
-                for (int skelettonPosCount = 0; skelettonPosCount < NUI_SKELETON_POSITION_COUNT; skelettonPosCount++)
+                for (int skeletonJointNumber = 0; skeletonJointNumber < JOINT_COUNT; skeletonJointNumber++)
                 {
-                    String currentJointName = Enum.GetName(typeof(JointType), skelettonPosCount);
+                    String currentJointName = Enum.GetName(typeof(JointType), skeletonJointNumber);
 
-                    //TODO Refactor
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_X")
-                        .append_child_value("type", "PositionX")
-                        .append_child_value("unit", "meters");
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_Y")
-                        .append_child_value("type", "PositionY")
-                        .append_child_value("unit", "meters");
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_Z")
-                        .append_child_value("type", "PositionZ")
-                        .append_child_value("unit", "meters");
-                    channels.append_child("channel")
-                        .append_child_value("label", currentJointName + "_Conf")
-                        .append_child_value("type", "Confidence")
-                        .append_child_value("unit", "normalized");
+                    for (int i = 0; i < 3; i++)
+                    {
+                        AddNewJointChannel(channels, currentJointName + (JointValueNameSuffix)i, (MoCapChannelType)i, "meters");
+                    }
+                    AddNewJointChannel(channels, currentJointName + JointValueNameSuffix._Conf, MoCapChannelType.Confidence, "normalized");
                 }
-                channels.append_child("channel")
-                    .append_child_value("label", "SkeletonTrackingId" + skelettonID)
-                    .append_child_value("type", "TrackingId");
-                channels.append_child("channel")
-                    .append_child_value("label", "SkeletonQualityFlags" + skelettonID);
             }
 
             // misc meta-data
-            infoMetaData.desc().append_child("acquisition")
+            mocapStreamMetaData.desc().append_child("acquisition")
                 .append_child_value("manufacturer", "Microsoft")
                 .append_child_value("model", "Kinect 2.0");
 
-            outletData = new liblsl.StreamOutlet(infoMetaData);
+            outletData = new liblsl.StreamOutlet(mocapStreamMetaData);
+        }
 
-            //Marker data
-            liblsl.StreamInfo streamMarker = new liblsl.StreamInfo("Kinect-LSL-Markers", "Markers", 1, 0, liblsl.channel_format_t.cf_string, sensorId);
-            outletMarker = new liblsl.StreamOutlet(streamMarker);
+        private void AddNewJointChannel(liblsl.XMLElement parent, string jointValueName, MoCapChannelType type, string unit)
+        {
+            liblsl.XMLElement channel = new liblsl.XMLElement();
+            parent.append_child("channel")
+                .append_child_value("label", jointValueName)
+                .append_child_value("type", type.ToString())
+                .append_child_value("unit", unit);
         }
 
         private void SendLslDataOneBodyTracked(float[] data)
@@ -167,19 +178,19 @@ namespace LSL_Kinect
             outletData.push_sample(data, liblsl.local_clock() - localClockStartingPoint);
         }
 
-        private float[] GetBodyData(Body body)
+        private float[] GetSelectedBodyData(Body body)
         {
-            float[] data = new float[NUM_CHANNELS_PER_STREAM];
+            float[] data = new float[CHANNELS_PER_SKELETON];
             int channelIndex = 0, jointNumber = 0;
 
-            while (jointNumber < Enum.GetValues(typeof(JointType)).Length)
+            if(body != null)
             {
-                channelIndex = AddOneBodyJointData(data, channelIndex, body.Joints[(JointType)jointNumber]);
-                jointNumber++;
+                while (jointNumber < Enum.GetValues(typeof(JointType)).Length)
+                {
+                    channelIndex = AddOneBodyJointData(data, channelIndex, body.Joints[(JointType)jointNumber]);
+                    jointNumber++;
+                }
             }
-
-            data[channelIndex++] = body.TrackingId;
-            data[channelIndex++] = (body.IsTracked) ? 1f : -1f;
 
             return data;
         }
@@ -216,6 +227,8 @@ namespace LSL_Kinect
 
         private void ManageBodiesData()
         {
+            float[] data = new float[CHANNELS_PER_SKELETON];
+
             if (bodies != null)
             {
                 foreach (var body in bodies)
@@ -227,16 +240,15 @@ namespace LSL_Kinect
 
                     if (selectedBodyID != null && body.TrackingId == selectedBodyID.kinectID)
                     {
-                        ManageSelectedBody(body);
+                        data = GetSelectedBodyData(body);
                     }
                 }
             }
+            SendSelectedBodyData(data);
         }
 
-        private void ManageSelectedBody(Body body)
+        private void SendSelectedBodyData(float[] data)
         {
-            float[] data = GetBodyData(body);
-
             if (isBroadcasting)
             {
                 SendLslDataOneBodyTracked(data);
@@ -284,6 +296,7 @@ namespace LSL_Kinect
         }
 
         #region Marker
+
         private void SendMarker(string[] dataMarker)
         {
             outletMarker.push_sample(dataMarker, liblsl.local_clock() - localClockStartingPoint);
@@ -298,6 +311,7 @@ namespace LSL_Kinect
         {
             SendMarker(new string[] { "Stop broadcasting" });
         }
+
         #endregion Marker
 
         #region CSV
@@ -309,7 +323,7 @@ namespace LSL_Kinect
 
             foreach (String jointName in Enum.GetNames(typeof(JointType)))
             {
-                foreach (String suffix in jointInfoSuffix)
+                foreach (String suffix in Enum.GetNames(typeof(JointValueNameSuffix)))
                 {
                     currentDataTable.Columns.Add(jointName + suffix, typeof(float));
                 }
@@ -364,6 +378,7 @@ namespace LSL_Kinect
         #endregion CSV
 
         #region Display
+
         private void UpdateKinectCaptureRelatedPanels()
         {
             Visibility visibility = (isKinectAvailable) ? Visibility.Visible : Visibility.Collapsed;
@@ -476,7 +491,6 @@ namespace LSL_Kinect
 
         private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
         {
-
             isKinectAvailable = args.IsAvailable;
             UpdateKinectCaptureRelatedPanels();
 
@@ -569,8 +583,6 @@ namespace LSL_Kinect
             SendMarker(dataMarker);
             LslNumberSpaceBarPress.Text = (spaceBarPressCounter - 1) + " at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
         }
-
-        
 
         #endregion Button Event
 
