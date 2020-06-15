@@ -137,8 +137,8 @@ namespace LSL_Kinect
         private void SetMoCapStreamDefinition()
         {
             liblsl.StreamInfo mocapStreamMetaData =
-                            new liblsl.StreamInfo("EuroMov-!Mocap-Kinect", "!MoCap",
-                            CHANNELS_PER_SKELETON, 30, liblsl.channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
+                            new liblsl.StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
+                            CHANNELS_PER_SKELETON, 15, liblsl.channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
 
             liblsl.XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
 
@@ -166,7 +166,6 @@ namespace LSL_Kinect
 
         private void AddNewJointChannel(liblsl.XMLElement parent, string jointValueName, MoCapChannelType type, string unit)
         {
-            liblsl.XMLElement channel = new liblsl.XMLElement();
             parent.append_child("channel")
                 .append_child_value("label", jointValueName)
                 .append_child_value("type", type.ToString())
@@ -286,6 +285,7 @@ namespace LSL_Kinect
                 if (bodyFrame != null)
                 {
                     canvas.Children.Clear();
+
                     if (bodies == null)
                     {
                         bodies = new Body[bodyFrame.BodyFrameSource.BodyCount];
@@ -313,7 +313,6 @@ namespace LSL_Kinect
         }
 
         #endregion Marker
-
         #region CSV
 
         //Create a data table to store body data
@@ -394,6 +393,8 @@ namespace LSL_Kinect
             {
                 if (frame != null)
                 {
+                    SetFpsCounter(frame);
+
                     if (_mode == CameraMode.Color)
                     {
                         camera.Source = frame.ToBitmap();
@@ -424,6 +425,12 @@ namespace LSL_Kinect
                     }
                 }
             }
+        }
+
+        private void SetFpsCounter(ColorFrame frame)
+        {
+            double fps = 1.0 / frame.ColorCameraSettings.FrameInterval.TotalSeconds;
+            fpsCounterLabel.Text = fps.ToString("0.00") + " FPS";
         }
 
         private void UpdateRenderingButtonsState()
