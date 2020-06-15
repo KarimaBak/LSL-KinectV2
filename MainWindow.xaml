@@ -48,6 +48,7 @@
         <Label Grid.Row="2" Grid.Column="1" Content="Waiting for Kinect" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <Image Grid.Row="2" Grid.Column="1" Name="camera"  MaxHeight="500" Stretch="Uniform" />
         <Canvas Grid.Row="2" Grid.Column="1"  Name="canvas" MaxHeight="500" MaxWidth="500" />
+        <TextBlock x:Name="fpsCounterLabel" Text="0 FPS" Grid.Row="2" Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right" FontSize="22" Background="#99000000" Foreground="White" FontWeight="Bold" Panel.ZIndex="10" />
 
         <!-- Row 3 -->
         <GroupBox x:Name="cameraPanel" Grid.Row="3" Grid.Column="1" Header="Camera Rendering Options" Margin="5" Visibility="Collapsed">
