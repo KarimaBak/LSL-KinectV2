@@ -1,5 +1,5 @@
-# LSL-Kinect :
-C# Program that broadcast motion capture datas by using Kinect and LabStreamingLayer technology.
+# Overview :
+C# Program that broadcast motion capture data by using Kinect and LabStreamingLayer technology.
 
 # System Requirements :
 
@@ -31,6 +31,9 @@ You can enable/disable the skeletton drawing on the screen by clicking the "Visu
 - The FPS are lower than expected (15 FPS)
 
 # Developper Guide :
+
+To develop with Kinect you need the correct SDK and driver installed, you can find an installation guide here :
+https://docs.microsoft.com/en-us/previous-versions/windows/kinect/dn782035(v=ieb.10)
 
 There is a trello to track progress and incoming features, please ask permission to access it if you are part of the developpement team :
 https://trello.com/b/p3PkSvUN/lsl-kinect
