@@ -6,15 +6,19 @@
         xmlns:local="clr-namespace:LSL_Kinect"
         mc:Ignorable="d"
         Title="Kinect Capture"
-        Loaded="OnMainWindowLoaded"
         Closing="OnWindowClosing"
         SizeToContent = "WidthAndHeight"
-        KeyUp="OnKeyUp" ResizeMode="CanResizeWithGrip" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+        Activated="OnWindowGetFocus"
+        Deactivated="OnWindowLostFocus"
+        KeyUp="OnKeyUp" ResizeMode="CanResizeWithGrip" ScrollViewer.VerticalScrollBarVisibility="Disabled" Background="White">
     <Window.Resources>
         <SolidColorBrush x:Key="MediumGreyBrush" Color="#ff6e6e6e" />
         <SolidColorBrush x:Key="KinectPurpleBrush" Color="#ff52318f" />
         <SolidColorBrush x:Key="KinectBlueBrush" Color="#ff00BCF2" />
     </Window.Resources>
+    <Window.Effect>
+        <BlurEffect x:Name="blurEffect" Radius="0"/>
+    </Window.Effect>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="10" />
@@ -60,7 +64,7 @@
             </StackPanel>
         </GroupBox>
 
-            <!-- Second Column -->
+        <!-- Second Column -->
         <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="2" Grid.RowSpan="3">
             <GroupBox x:Name="bodyTrackingPanel" Header="Body Tracking" Margin="5" Visibility="Collapsed">
                 <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="5">

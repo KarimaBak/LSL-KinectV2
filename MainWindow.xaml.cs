@@ -430,7 +430,7 @@ namespace LSL_Kinect
         private void SetFpsCounter(ColorFrame frame)
         {
             double fps = 1.0 / frame.ColorCameraSettings.FrameInterval.TotalSeconds;
-            fpsCounterLabel.Text = fps.ToString("0.00") + " FPS";
+            fpsCounterLabel.Text = fps.ToString("0.") + " FPS";
         }
 
         private void UpdateRenderingButtonsState()
@@ -495,6 +495,16 @@ namespace LSL_Kinect
         #endregion Display
 
         #region Events
+        private void OnWindowLostFocus(object sender, EventArgs e)
+        {
+            blurEffect.Radius = 15;
+        }
+
+        private void OnWindowGetFocus(object sender, EventArgs e)
+        {
+            blurEffect.Radius = 0;
+        }
+
 
         private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
         {
@@ -502,10 +512,6 @@ namespace LSL_Kinect
             UpdateKinectCaptureRelatedPanels();
 
             UpdateIndicator(kinectStateIndicator, isKinectAvailable);
-        }
-
-        private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
-        {
         }
 
         private void OnWindowClosing(object sender, CancelEventArgs e)
@@ -816,5 +822,7 @@ namespace LSL_Kinect
         //}
 
         #endregion Old code
+
+        
     }
 }
