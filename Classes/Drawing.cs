@@ -59,9 +59,8 @@ namespace LSL_Kinect
             foreach (Joint joint in body.Joints.Values)
             {
                 DrawPoint(canvas, joint);
-                Etat_Main(canvas, body.HandLeftState, body.Joints[JointType.HandLeft]);
-                Etat_Main(canvas, body.HandRightState, body.Joints[JointType.HandRight]);
             }
+
             IReadOnlyDictionary<JointType, Joint> joints = body.Joints;
             const float InferredZPositionClamp = 0.1f;
             foreach (JointType jointType in joints.Keys)
@@ -88,8 +87,8 @@ namespace LSL_Kinect
             DrawLine(canvas, body.Joints[JointType.WristRight], body.Joints[JointType.HandRight]);
             DrawLine(canvas, body.Joints[JointType.HandLeft], body.Joints[JointType.HandTipLeft]);
             DrawLine(canvas, body.Joints[JointType.HandRight], body.Joints[JointType.HandTipRight]);
-            DrawLine(canvas, body.Joints[JointType.HandTipLeft], body.Joints[JointType.ThumbLeft]);
-            DrawLine(canvas, body.Joints[JointType.HandTipRight], body.Joints[JointType.ThumbRight]);
+            DrawLine(canvas, body.Joints[JointType.WristLeft], body.Joints[JointType.ThumbLeft]);
+            DrawLine(canvas, body.Joints[JointType.WristRight], body.Joints[JointType.ThumbRight]);
             DrawLine(canvas, body.Joints[JointType.SpineMid], body.Joints[JointType.SpineBase]);
             DrawLine(canvas, body.Joints[JointType.SpineBase], body.Joints[JointType.HipLeft]);
             DrawLine(canvas, body.Joints[JointType.SpineBase], body.Joints[JointType.HipRight]);
@@ -153,34 +152,6 @@ namespace LSL_Kinect
             Canvas.SetTop(ellipse, joint.Position.Y - ellipse.Height / 2);
 
             canvas.Children.Add(ellipse);
-        }
-
-        public void Etat_Main(Canvas canvas, HandState handState, Joint positionMain)
-        {
-            if (handState != HandState.NotTracked)
-            {
-                positionMain = ScaleTo(positionMain, canvas.ActualWidth, canvas.ActualHeight);
-                SolidColorBrush color = null;
-                switch (handState)
-                {
-                    case HandState.Closed:
-                        color = new SolidColorBrush(Colors.Red);
-                        break;
-
-                    case HandState.Open:
-                        color = new SolidColorBrush(Colors.Green);
-                        break;
-
-                    case HandState.Lasso:
-                        color = new SolidColorBrush(Colors.Blue);
-                        break;
-                }
-
-                Ellipse ellipse = new Ellipse { Width = 100, Height = 100, Fill = color, Opacity = 0.1 };
-                Canvas.SetLeft(ellipse, positionMain.Position.X - ellipse.Width / 2);
-                Canvas.SetTop(ellipse, positionMain.Position.Y - ellipse.Height / 2);
-                canvas.Children.Add(ellipse);
-            }
         }
 
         public void DrawLine(Canvas canvas, Joint first, Joint second)

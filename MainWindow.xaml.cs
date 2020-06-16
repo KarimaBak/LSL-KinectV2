@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -55,7 +56,7 @@ namespace LSL_Kinect
 
         private Body[] bodies = null;
         private List<Drawing> skelettonsDrawing = new List<Drawing>();
-        private DataContextIdViewModel idWrapperList = new DataContextIdViewModel();
+        private MainWindowViewModel currentViewModel = new MainWindowViewModel();
 
         private BodyIdWrapper selectedBodyID = null;
 
@@ -70,7 +71,6 @@ namespace LSL_Kinect
         private CameraMode _mode = CameraMode.Color;
         private bool drawSkeletonOverCamera = true;
         private bool isKinectAvailable = false;
-        private bool isRecording = false;
         private bool isBroadcasting = false;
 
         #endregion Private Variables
@@ -91,7 +91,7 @@ namespace LSL_Kinect
 
         public MainWindow()
         {
-            DataContext = idWrapperList;
+            DataContext = currentViewModel;
 
             InitializeComponent();
 
@@ -105,8 +105,7 @@ namespace LSL_Kinect
         {
             UpdateRenderingButtonsState();
             UpdateVisualTrackingButtonState();
-            UpdateSendLslMarkerButton();
-            UpdateExportCSVButton();
+            UpdateBroadcastRelatedButtons();
         }
 
         private void RegisterKinect()
@@ -182,7 +181,7 @@ namespace LSL_Kinect
             float[] data = new float[CHANNELS_PER_SKELETON];
             int channelIndex = 0, jointNumber = 0;
 
-            if(body != null)
+            if (body != null)
             {
                 while (jointNumber < Enum.GetValues(typeof(JointType)).Length)
                 {
@@ -251,10 +250,6 @@ namespace LSL_Kinect
             if (isBroadcasting)
             {
                 SendLslDataOneBodyTracked(data);
-            }
-
-            if (isRecording)
-            {
                 AddRowToDataTable(data);
             }
         }
@@ -266,7 +261,7 @@ namespace LSL_Kinect
             if (correspondingSkeletton == null)
             {
                 BodyIdWrapper newWrapper = new BodyIdWrapper(body.TrackingId);
-                idWrapperList.AddData(newWrapper);
+                currentViewModel.AddData(newWrapper);
 
                 correspondingSkeletton = new Drawing(newWrapper);
                 skelettonsDrawing.Add(correspondingSkeletton);
@@ -313,12 +308,15 @@ namespace LSL_Kinect
         }
 
         #endregion Marker
+
         #region CSV
 
         //Create a data table to store body data
         private void CreateDataTable()
         {
             currentDataTable = new DataTable();
+
+            currentDataTable.Columns.Add("TimeSpan", typeof(string));
 
             foreach (String jointName in Enum.GetNames(typeof(JointType)))
             {
@@ -332,10 +330,11 @@ namespace LSL_Kinect
         private void AddRowToDataTable(float[] data)
         {
             var newRow = currentDataTable.NewRow();
+            newRow[0] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
-            for (int i = 0; i < currentDataTable.Columns.Count; i++)
+            for (int i = 1; i < currentDataTable.Columns.Count; i++)
             {
-                newRow[i] = data[i];
+                newRow[i] = data[i - 1];
             }
 
             currentDataTable.Rows.Add(newRow);
@@ -453,14 +452,10 @@ namespace LSL_Kinect
             }
         }
 
-        private void UpdateSendLslMarkerButton()
+        private void UpdateBroadcastRelatedButtons()
         {
+            ExportCSVButton.IsEnabled = !isBroadcasting;
             SendLslMarkerButton.IsEnabled = isBroadcasting;
-        }
-
-        private void UpdateExportCSVButton()
-        {
-            ExportCSVButton.IsEnabled = !isRecording;
         }
 
         private void UpdateBroadcastState()
@@ -473,13 +468,6 @@ namespace LSL_Kinect
 
             UpdateIndicator(broadcastingStateIndicator, isBroadcasting);
             broadcastButton.Content = (isBroadcasting == true) ? "Stop broadcast" : "Start broadcast";
-        }
-
-        private void UpdateRecordState()
-        {
-            isRecording = !isRecording;
-            UpdateIndicator(recordingStateIndicator, isRecording);
-            recordButton.Content = (isRecording == true) ? "Stop record" : "Start record";
         }
 
         private void UpdateIndicator(Ellipse currentIndicator, bool status)
@@ -495,6 +483,25 @@ namespace LSL_Kinect
         #endregion Display
 
         #region Events
+
+        private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
+        {
+            isKinectAvailable = args.IsAvailable;
+            UpdateKinectCaptureRelatedPanels();
+
+            UpdateIndicator(kinectStateIndicator, isKinectAvailable);
+        }
+
+        private void OnIdListSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            broadcastPanel.Visibility = Visibility.Visible;
+
+            System.Windows.Controls.ComboBox comboBox = (sender as System.Windows.Controls.ComboBox);
+            selectedBodyID = (BodyIdWrapper)comboBox.SelectedItem;
+        }
+
+        #region Windows Events
+
         private void OnWindowLostFocus(object sender, EventArgs e)
         {
             blurEffect.Radius = 15;
@@ -503,15 +510,6 @@ namespace LSL_Kinect
         private void OnWindowGetFocus(object sender, EventArgs e)
         {
             blurEffect.Radius = 0;
-        }
-
-
-        private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
-        {
-            isKinectAvailable = args.IsAvailable;
-            UpdateKinectCaptureRelatedPanels();
-
-            UpdateIndicator(kinectStateIndicator, isKinectAvailable);
         }
 
         private void OnWindowClosing(object sender, CancelEventArgs e)
@@ -529,29 +527,15 @@ namespace LSL_Kinect
             }
         }
 
-        private void OnIdListSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            broadcastPanel.Visibility = Visibility.Visible;
-            csvPanel.Visibility = Visibility.Visible;
-
-            System.Windows.Controls.ComboBox comboBox = (sender as System.Windows.Controls.ComboBox);
-            selectedBodyID = (BodyIdWrapper)comboBox.SelectedItem;
-        }
+        #endregion Windows Events
 
         #region Button Event
 
         private void OnBroadcastButtonClicked(object sender, RoutedEventArgs e)
         {
             UpdateBroadcastState();
-            UpdateSendLslMarkerButton();
-        }
-
-        private void OnRecordButtonClicked(object sender, RoutedEventArgs e)
-        {
-            UpdateRecordState();
-            UpdateExportCSVButton();
-
-            if (isRecording == true)
+            UpdateBroadcastRelatedButtons();
+            if (isBroadcasting)
             {
                 CreateDataTable();
             }
@@ -589,7 +573,7 @@ namespace LSL_Kinect
             }
         }
 
-        private void OnSendLSLClicked(object sender, RoutedEventArgs e)
+        private void OnSendMarkerBtnClicked(object sender, RoutedEventArgs e)
         {
             spaceBarPressCounter++;
             String[] dataMarker = new String[] { spaceBarPressCounter.ToString(), spaceBarPressCounter.ToString() };
@@ -605,224 +589,12 @@ namespace LSL_Kinect
         {
             if (e.Key == System.Windows.Input.Key.Space)
             {
-                OnSendLSLClicked(null, null);
+                OnSendMarkerBtnClicked(null, null);
             }
         }
 
         #endregion Keyboard event
 
         #endregion Events
-
-        #region Old code
-
-        /* Unused
-        /*
-        private void SendLslDataAllBodies(String sensorId, Body[] bodies)
-        {
-            float[] data = new float[NUM_CHANNELS_PER_STREAM];
-            int i = 0;
-
-            foreach (var body in bodies)
-            {
-                if (body.IsTracked)
-                {
-                    // Comparaison entre le numéro cours choisi par le bouton dans Dessins.cs et le numéro de squelette détecté.
-                    String shortTrakingIdCalcul = (body.TrackingId - Drawing.KINECT_MINIMAL_ID).ToString();
-
-                    if ((dessin.idSqueletteChoisi != -1) && (dessin.idSqueletteChoisi.ToString() == shortTrakingIdCalcul))
-                    {
-                        foreach (Joint joint in body.Joints.Values)
-                        {
-                            CameraSpacePoint jointPosition = joint.Position;
-                            data[i++] = jointPosition.X;
-                            data[i++] = jointPosition.Y;
-                            data[i++] = jointPosition.Z;
-                            data[i++] = (float)joint.TrackingState / 2.0f; // 0.0, 0.5, or 1.0
-                        }
-                        data[i++] = body.TrackingId;
-                        if (body.IsTracked)
-                        {
-                            data[i++] = 1f;
-                        }
-                        else
-                        {
-                            data[i++] = -1f;
-                        }
-                        i++;
-                    }
-                }
-            }
-            outletData.push_sample(data, liblsl.local_clock());
-        }
-
-        private int Reduction_Id_Body(Body[] _bodies, Body _body)
-        {
-            int id = 999;
-            for (int i = 0; i < 6; i++)
-            {
-                if (_bodies[i].TrackingId == _body.TrackingId)
-                    id = i;
-            }
-            return id;
-        }
-
-      private void Ecrire_CSV(DataTable _dataTable, string _nomFichier)
-      {
-          NumberFormatInfo nfi = new NumberFormatInfo();
-          nfi.NumberDecimalSeparator = ".";
-          using (var writer = new StreamWriter(currentCSVpath))
-          {
-              writer.AutoFlush = true;
-              writer.WriteLine(_nomFichier);
-              writer.Write("TimeStamp(s)");
-              for (int i = 0; i < 25; i++)
-                  writer.Write(";X." + ((JointType)i).ToString() + "(m);" + "Y." + ((JointType)i).ToString() + "(m);" + "Z." + ((JointType)i).ToString()
-                      + "(m);" + "TrkState." + ((JointType)i).ToString());
-
-              writer.WriteLine(";HandLeftState;" +
-                  "HandLeftConfidence;HandRightState;" +
-                  "HandRightConfidence");
-
-              foreach (DataRow row in _dataTable.Rows)
-              {
-                  string[] tempX = row.ReworkRow("X_");
-                  string[] tempY = row.ReworkRow("Y_");
-                  string[] tempZ = row.ReworkRow("Z_");
-                  string ts = row.Coma_To_Dot("TimeStamp");
-
-                  writer.Write(ts + ";");
-                  for (int i = 0; i < 25; i++)
-                      writer.Write(tempX[i] + ";" +
-                          tempY[i] + ";" + tempZ[i] + ";"
-                          + row["TrackingState_" + ((JointType)i).ToString()] + ";");
-
-                  writer.WriteLine(row["HandLeftState"] + ";" + row["HandLeftConfidence"] +
-                      ";" + row["HandRightState"] + ";" + row["HandRightConfidence"]);
-              }
-          }
-      }
-
-      private double Median_TimeStamp(List<Squelette> _liste)
-      {
-          long[] t0Tab = new long[25];
-          double t0Median = 0;
-
-          for (int i = 0; i < 25; i++)
-          {
-              if (_liste[i] != null)
-              {
-                  t0Tab[i] = _liste[i].Timestamp;
-              }
-          }
-
-          Array.Sort(t0Tab);
-          t0Median = ((t0Tab[12] + t0Tab[13]) / 2) * 0.001;
-
-          return t0Median;
-      }*/
-
-        /* Unused
-        public static string AbregeTrackingState(TrackingState trk)
-        {
-            string abrege = null;
-            switch (trk)
-            {
-                case TrackingState.Tracked:
-                    abrege = "T";
-                    break;
-
-                case TrackingState.Inferred:
-                    abrege = "I";
-                    break;
-
-                case TrackingState.NotTracked:
-                    abrege = "NT";
-                    break;
-
-                default:
-                    abrege = "UNK";
-                    break;
-            }
-            return abrege;
-        }
-
-        public static string AbregeHandConfidence(TrackingConfidence trkconf)
-        {
-            string abrege = null;
-            switch (trkconf)
-            {
-                case TrackingConfidence.Low:
-                    abrege = "L";
-                    break;
-
-                case TrackingConfidence.High:
-                    abrege = "H";
-                    break;
-
-                default:
-                    abrege = "UNK";
-                    break;
-            }
-            return abrege;
-        }
-
-        public static string AbregeHandState(HandState state)
-        {
-            string abrege = null;
-            switch (state)
-            {
-                case HandState.Closed:
-                    abrege = "C";
-                    break;
-
-                case HandState.Lasso:
-                    abrege = "L";
-                    break;
-
-                case HandState.NotTracked:
-                    abrege = "NT";
-                    break;
-
-                case HandState.Open:
-                    abrege = "O";
-                    break;
-
-                case HandState.Unknown:
-                    abrege = "UNK";
-                    break;
-
-                default:
-                    abrege = "UNK";
-                    break;
-            }
-            return abrege;
-        }*/
-
-        //Unused
-        //private string Formatage_DateHeure()
-        //{
-        //    string dateHeureFormatee = null;
-        //    string dateHeureNonFormatee = null;
-        //    dateHeureNonFormatee = DateTime.Now.ToString();
-        //    char[] dateHeureNonFormateeTableau = null;
-        //    dateHeureNonFormateeTableau = dateHeureNonFormatee.ToCharArray();
-        //    for (int i = 0; i < dateHeureNonFormatee.Length; i++)
-        //    {
-        //        if (dateHeureNonFormateeTableau[i] == ':' ||
-        //            dateHeureNonFormateeTableau[i] == ' ' ||
-        //            dateHeureNonFormateeTableau[i] == '\\' ||
-        //            dateHeureNonFormateeTableau[i] == '/')
-        //        {
-        //            dateHeureNonFormateeTableau[i] = '_';
-        //        }
-        //    }
-        //    dateHeureFormatee = new string(dateHeureNonFormateeTableau);
-
-        //    return dateHeureFormatee;
-        //}
-
-        #endregion Old code
-
-        
     }
 }

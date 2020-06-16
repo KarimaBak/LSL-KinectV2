@@ -1,29 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace LSL_Kinect.Classes
 {
-	public class DataContextIdViewModel : INotifyPropertyChanged
+	public class MainWindowViewModel : INotifyPropertyChanged
     {
-		private string _selectedID;
-		public string SelectedID
-		{
-			get { return _selectedID; }
-			set
-			{
-				_selectedID = value;
-				this.OnPropertyChanged("SelectedID");
-			}
-		}
-
 		public ObservableCollection<BodyIdWrapper> IdList { get; set; }
 
-		public DataContextIdViewModel()
+		public MainWindowViewModel()
 		{
 			IdList = new ObservableCollection<BodyIdWrapper>();
 		}

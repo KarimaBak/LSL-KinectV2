@@ -70,7 +70,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Classes\BodyIdWrapper.cs" />
-    <Compile Include="Classes\DataContextIdViewModel .cs" />
+    <Compile Include="Classes\MainWindowViewModel.cs" />
     <Compile Include="Classes\LSL.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
