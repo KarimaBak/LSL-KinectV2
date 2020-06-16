@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Kinect;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Drawing;
 
 namespace LSL_Kinect
 {

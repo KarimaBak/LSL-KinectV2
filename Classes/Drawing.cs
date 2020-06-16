@@ -1,38 +1,39 @@
 ﻿using LSL_Kinect.Classes;
 using Microsoft.Kinect;
+using System;
 using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 
 namespace LSL_Kinect
 {
     public class Drawing
     {
-        private const float skeletonMaxX = 1;
-        private const float skeletonMinX = -1;
-        private const float skeletonMaxY= 1;
-        private const float skeletonMinY = -1;
+        private const float KinectCameraColorWidth = 1920;
+        private const float KinectCameraColorHeight= 1080;
 
         public BodyIdWrapper associatedBodyID = null;
 
         private Label IdLabel = new Label(){ FontSize = 30, Background = Brushes.White };
+        private CoordinateMapper coordinateMapper = null;
 
-        public Drawing(BodyIdWrapper _idWrapper)
+        public Drawing(BodyIdWrapper _idWrapper, CoordinateMapper _coordinateMapper)
         {
             associatedBodyID = _idWrapper;
+            coordinateMapper = _coordinateMapper;
         }
 
-        public Joint ScaleTo(Joint joint, double width, double height)
+        public ColorSpacePoint ScaleTo(Joint joint, double width, double height)
         {
-            joint.Position = new CameraSpacePoint
-            {
-                X = Scale(width, skeletonMinX, skeletonMaxX, joint.Position.X),
-                Y = Scale(height, skeletonMinY, skeletonMaxY, -joint.Position.Y),
-                Z = joint.Position.Z
-            };
+            //For color mode only
+            ColorSpacePoint colorPoint = coordinateMapper.MapCameraPointToColorSpace(joint.Position);
 
-            return joint;
+            colorPoint.X = Scale(width, 0, KinectCameraColorWidth, colorPoint.X);
+            colorPoint.Y = Scale(height, 0, KinectCameraColorHeight, colorPoint.Y);
+
+            return colorPoint;
         }
 
         public float Scale(double maxPixel, double minAxis, double maxAxis, float position)
@@ -104,10 +105,10 @@ namespace LSL_Kinect
         {
             if (head.TrackingState == TrackingState.Tracked)
             {
-                Joint headJoint = ScaleTo(head, canvas.ActualWidth, canvas.ActualHeight);
+                ColorSpacePoint headJoint = ScaleTo(head, canvas.ActualWidth, canvas.ActualHeight);
 
-                Canvas.SetLeft(IdLabel, headJoint.Position.X + (IdLabel.ActualWidth * 0.5));
-                Canvas.SetTop(IdLabel, headJoint.Position.Y - (IdLabel.ActualHeight * 0.5));
+                Canvas.SetLeft(IdLabel, headJoint.X + (IdLabel.ActualWidth * 0.5));
+                Canvas.SetTop(IdLabel, headJoint.Y - (IdLabel.ActualHeight * 0.5));
                 IdLabel.Content = associatedBodyID.shortIDString;
                 if (canvas.Children.IndexOf(IdLabel) == -1)
                 {
@@ -118,7 +119,7 @@ namespace LSL_Kinect
 
         public void DrawPoint(Canvas canvas, Joint joint)
         {
-            joint = ScaleTo(joint, canvas.ActualWidth, canvas.ActualHeight);
+            ColorSpacePoint jointPos = ScaleTo(joint, canvas.ActualWidth, canvas.ActualHeight);
 
             int size = 0;
             SolidColorBrush color = null;
@@ -148,16 +149,16 @@ namespace LSL_Kinect
                 Fill = color
             };
 
-            Canvas.SetLeft(ellipse, joint.Position.X - ellipse.Width / 2);
-            Canvas.SetTop(ellipse, joint.Position.Y - ellipse.Height / 2);
+            Canvas.SetLeft(ellipse, jointPos.X - ellipse.Width / 2);
+            Canvas.SetTop(ellipse, jointPos.Y - ellipse.Height / 2);
 
             canvas.Children.Add(ellipse);
         }
 
         public void DrawLine(Canvas canvas, Joint first, Joint second)
         {
-            first = ScaleTo(first, canvas.ActualWidth, canvas.ActualHeight);
-            second = ScaleTo(second, canvas.ActualWidth, canvas.ActualHeight);
+            ColorSpacePoint firstJointPos = ScaleTo(first, canvas.ActualWidth, canvas.ActualHeight);
+            ColorSpacePoint secondJointPos = ScaleTo(second, canvas.ActualWidth, canvas.ActualHeight);
 
             int thickness = 0;
             SolidColorBrush color = null;
@@ -178,8 +179,8 @@ namespace LSL_Kinect
                 color = new SolidColorBrush(Colors.Red);
             }
 
-            Line line = new Line{X1 = first.Position.X, Y1 = first.Position.Y, X2 = second.Position.X, 
-                Y2 = second.Position.Y, StrokeThickness = thickness, Stroke = color };
+            Line line = new Line{X1 = firstJointPos.X, Y1 = firstJointPos.Y, X2 = secondJointPos.X, 
+                Y2 = secondJointPos.Y, StrokeThickness = thickness, Stroke = color };
 
             canvas.Children.Add(line);
         }

@@ -46,20 +46,9 @@
 
         <!-- Row 2 -->
         <Label Grid.Row="2" Grid.Column="1" Content="Waiting for Kinect" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        <Image Grid.Row="2" Grid.Column="1" x:Name="camera"  MaxHeight="500" Stretch="Uniform" />
-        <Canvas Grid.Row="2" Grid.Column="1"  x:Name="canvas" MaxHeight="500" MaxWidth="500" />
+        <Image Grid.Row="2" Grid.Column="1" x:Name="camera" MaxHeight="700" Stretch="Uniform"/>
+        <Canvas Grid.Row="2" Grid.Column="1" x:Name="canvas"/>
         <TextBlock x:Name="fpsCounterLabel" Text="0 FPS" Grid.Row="2" Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right" FontSize="22" Background="#99000000" Foreground="White" FontWeight="Bold" Panel.ZIndex="10" />
-
-        <!-- Second Column -->
-        <!-- Row 3 -->
-        <GroupBox x:Name="cameraPanel" Grid.Row="3" Grid.Column="1" Header="Camera Rendering Options" Margin="5" Visibility="Collapsed">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="colorButton"  Content="Color" Margin="5" Click="OnColorModeButtonClicked" />
-                <Button x:Name="depthButton" Content="Depth" Margin="5" Click="OnDepthModeButtonClicked" />
-                <Button x:Name="infraredButton" Content="Infrared" Margin="5" Click="OnInfraredButtonClicked" />
-                <Button x:Name="VisuTracking_btn" Content="Visu Tracking" Margin="5" Click="OnVisualTrackingButtonClicked" />
-            </StackPanel>
-        </GroupBox>
 
         <!-- Second Column -->
         <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="2" Grid.RowSpan="3">

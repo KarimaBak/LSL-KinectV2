@@ -80,10 +80,10 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Classes\InfraredSpace.cs" />
+    <Compile Include="Classes\Unused\InfraredSpace.cs" />
     <Compile Include="Classes\Unused\Skeleton.cs" />
     <Compile Include="Classes\Drawing.cs" />
-    <Compile Include="Classes\DepthSpace.cs" />
+    <Compile Include="Classes\Unused\DepthSpace.cs" />
     <Compile Include="Classes\Constantes.cs" />
     <Compile Include="Classes\BitmapGeneration.cs" />
     <Compile Include="MainWindow.xaml.cs">

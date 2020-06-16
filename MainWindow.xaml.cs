@@ -68,8 +68,6 @@ namespace LSL_Kinect
         private DataTable currentDataTable = null;
         private string currentCSVpath = null;
 
-        private CameraMode _mode = CameraMode.Color;
-        private bool drawSkeletonOverCamera = true;
         private bool isKinectAvailable = false;
         private bool isBroadcasting = false;
 
@@ -103,8 +101,6 @@ namespace LSL_Kinect
 
         private void InitiateDisplay()
         {
-            UpdateRenderingButtonsState();
-            UpdateVisualTrackingButtonState();
             UpdateBroadcastRelatedButtons();
         }
 
@@ -115,8 +111,7 @@ namespace LSL_Kinect
             currentKinectSensor.IsAvailableChanged += OnKinectIsAvailableChanged;
 
             readerMultiFrame =
-                currentKinectSensor.OpenMultiSourceFrameReader(FrameSourceTypes.Color | FrameSourceTypes.Body
-                | FrameSourceTypes.Depth | FrameSourceTypes.BodyIndex | FrameSourceTypes.Infrared);
+                currentKinectSensor.OpenMultiSourceFrameReader(FrameSourceTypes.Color | FrameSourceTypes.Body);
             readerMultiFrame.MultiSourceFrameArrived += ManageMultiSourceFrame;
         }
 
@@ -179,14 +174,13 @@ namespace LSL_Kinect
         private float[] GetSelectedBodyData(Body body)
         {
             float[] data = new float[CHANNELS_PER_SKELETON];
-            int channelIndex = 0, jointNumber = 0;
+            int channelIndex = 0;
 
             if (body != null)
             {
-                while (jointNumber < Enum.GetValues(typeof(JointType)).Length)
+                foreach (Joint joint in body.Joints.Values)
                 {
-                    channelIndex = AddOneBodyJointData(data, channelIndex, body.Joints[(JointType)jointNumber]);
-                    jointNumber++;
+                    channelIndex = AddOneBodyJointData(data, channelIndex, joint);
                 }
             }
 
@@ -263,14 +257,11 @@ namespace LSL_Kinect
                 BodyIdWrapper newWrapper = new BodyIdWrapper(body.TrackingId);
                 currentViewModel.AddData(newWrapper);
 
-                correspondingSkeletton = new Drawing(newWrapper);
+                correspondingSkeletton = new Drawing(newWrapper, currentKinectSensor.CoordinateMapper);
                 skelettonsDrawing.Add(correspondingSkeletton);
             }
 
-            if (drawSkeletonOverCamera)
-            {
-                correspondingSkeletton.DrawSkeleton(canvas, body);
-            }
+            correspondingSkeletton.DrawSkeleton(canvas, body);
         }
 
         private void GetBodiesData(MultiSourceFrame acquiredFrame)
@@ -381,47 +372,16 @@ namespace LSL_Kinect
         {
             Visibility visibility = (isKinectAvailable) ? Visibility.Visible : Visibility.Collapsed;
             bodyTrackingPanel.Visibility = visibility;
-            cameraPanel.Visibility = visibility;
         }
 
         private void UpdateCameraImage(MultiSourceFrame acquiredFrame)
         {
-            //TODO Refactor
-            //Color
             using (var frame = acquiredFrame.ColorFrameReference.AcquireFrame())
             {
                 if (frame != null)
                 {
                     SetFpsCounter(frame);
-
-                    if (_mode == CameraMode.Color)
-                    {
-                        camera.Source = frame.ToBitmap();
-                    }
-                }
-            }
-
-            // Infrared
-            using (var frame = acquiredFrame.InfraredFrameReference.AcquireFrame())
-            {
-                if (frame != null)
-                {
-                    if (_mode == CameraMode.Infrared)
-                    {
-                        camera.Source = frame.ToBitmap();
-                    }
-                }
-            }
-
-            // Depth
-            using (var frame = acquiredFrame.DepthFrameReference.AcquireFrame())
-            {
-                if (frame != null)
-                {
-                    if (_mode == CameraMode.Depth)
-                    {
-                        camera.Source = frame.ToBitmap();
-                    }
+                    camera.Source = frame.ToBitmap();
                 }
             }
         }
@@ -430,26 +390,6 @@ namespace LSL_Kinect
         {
             double fps = 1.0 / frame.ColorCameraSettings.FrameInterval.TotalSeconds;
             fpsCounterLabel.Text = fps.ToString("0.") + " FPS";
-        }
-
-        private void UpdateRenderingButtonsState()
-        {
-            colorButton.Background = Brushes.LightGray;
-            depthButton.Background = Brushes.LightGray;
-            infraredButton.Background = Brushes.LightGray;
-
-            if (_mode == CameraMode.Color)
-            {
-                colorButton.Background = Brushes.LightGreen;
-            }
-            else if (_mode == CameraMode.Depth)
-            {
-                depthButton.Background = Brushes.LightGreen;
-            }
-            else if (_mode == CameraMode.Infrared)
-            {
-                infraredButton.Background = Brushes.LightGreen;
-            }
         }
 
         private void UpdateBroadcastRelatedButtons()
@@ -474,12 +414,6 @@ namespace LSL_Kinect
         {
             currentIndicator.Fill = (status) ? Brushes.Green : Brushes.Red;
         }
-
-        private void UpdateVisualTrackingButtonState()
-        {
-            VisuTracking_btn.Background = (drawSkeletonOverCamera) ? Brushes.LightGreen : Brushes.LightBlue;
-        }
-
         #endregion Display
 
         #region Events
@@ -539,30 +473,6 @@ namespace LSL_Kinect
             {
                 CreateDataTable();
             }
-        }
-
-        private void OnColorModeButtonClicked(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Color;
-            UpdateRenderingButtonsState();
-        }
-
-        private void OnDepthModeButtonClicked(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Depth;
-            UpdateRenderingButtonsState();
-        }
-
-        private void OnInfraredButtonClicked(object sender, RoutedEventArgs e)
-        {
-            _mode = CameraMode.Infrared;
-            UpdateRenderingButtonsState();
-        }
-
-        private void OnVisualTrackingButtonClicked(object sender, RoutedEventArgs e)
-        {
-            drawSkeletonOverCamera = !drawSkeletonOverCamera;
-            UpdateVisualTrackingButtonState();
         }
 
         private void OnCSVBtnClicked(object sender, RoutedEventArgs e)
