@@ -8,7 +8,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.IO;
-using System.Runtime.CompilerServices;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -65,7 +65,8 @@ namespace LSL_Kinect
         private liblsl.StreamOutlet outletMarker = null;
         private int spaceBarPressCounter = 0;
 
-        private DataTable currentDataTable = null;
+        private DataTable moCapDataTable = null;
+        private DataTable markerDataTable = null;
         private string currentCSVpath = null;
 
         private bool isKinectAvailable = false;
@@ -90,7 +91,6 @@ namespace LSL_Kinect
         public MainWindow()
         {
             DataContext = currentViewModel;
-
             InitializeComponent();
 
             RegisterKinect();
@@ -244,7 +244,7 @@ namespace LSL_Kinect
             if (isBroadcasting)
             {
                 SendLslDataOneBodyTracked(data);
-                AddRowToDataTable(data);
+                AddRowToDataTable(moCapDataTable, data);
             }
         }
 
@@ -285,6 +285,7 @@ namespace LSL_Kinect
 
         private void SendMarker(string[] dataMarker)
         {
+            AddRowToDataTable(markerDataTable, dataMarker);
             outletMarker.push_sample(dataMarker, liblsl.local_clock() - localClockStartingPoint);
         }
 
@@ -302,33 +303,38 @@ namespace LSL_Kinect
 
         #region CSV
 
-        //Create a data table to store body data
-        private void CreateDataTable()
+        //Create a data table to store stream data
+        private void CreateDataTables()
         {
-            currentDataTable = new DataTable();
+            moCapDataTable = new DataTable("Kinect_Capture_MoCap_Data");
 
-            currentDataTable.Columns.Add("TimeSpan", typeof(string));
+            moCapDataTable.Columns.Add("TimeSpan", typeof(string));
 
             foreach (String jointName in Enum.GetNames(typeof(JointType)))
             {
                 foreach (String suffix in Enum.GetNames(typeof(JointValueNameSuffix)))
                 {
-                    currentDataTable.Columns.Add(jointName + suffix, typeof(float));
+                    moCapDataTable.Columns.Add(jointName + suffix, typeof(float));
                 }
             }
+
+            markerDataTable = new DataTable("Kinect_Capture_Markers_Data");
+
+            markerDataTable.Columns.Add("TimeSpan", typeof(string));
+            markerDataTable.Columns.Add("Marker Message", typeof(string));
         }
 
-        private void AddRowToDataTable(float[] data)
+        private void AddRowToDataTable<T>(DataTable table, params T[] data)
         {
-            var newRow = currentDataTable.NewRow();
+            var newRow = table.NewRow();
             newRow[0] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
-            for (int i = 1; i < currentDataTable.Columns.Count; i++)
+            for (int i = 1; i < table.Columns.Count; i++)
             {
                 newRow[i] = data[i - 1];
             }
 
-            currentDataTable.Rows.Add(newRow);
+            table.Rows.Add(newRow);
         }
 
         private void WriteCSVFile(DataTable dataTable)
@@ -336,6 +342,7 @@ namespace LSL_Kinect
             SaveFileDialog saveFileDialog = new SaveFileDialog();
             saveFileDialog.Filter = "CSV files(*.csv) | *.csv";
             saveFileDialog.InitialDirectory = currentCSVpath;
+            saveFileDialog.FileName = dataTable.TableName;
 
             if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
@@ -344,6 +351,8 @@ namespace LSL_Kinect
                 using (var writer = new StreamWriter(saveFileDialog.FileName))
                 using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
                 {
+                    WriteCSVHeader(csv);
+
                     foreach (DataColumn column in dataTable.Columns)
                     {
                         csv.WriteField(column.ColumnName);
@@ -362,6 +371,15 @@ namespace LSL_Kinect
                     writer.Dispose();
                 }
             }
+        }
+
+        private static void WriteCSVHeader(CsvWriter csv)
+        {
+            csv.WriteField("Software : " + Assembly.GetExecutingAssembly().GetName().Name);
+            csv.WriteField("Version :" + Assembly.GetExecutingAssembly().GetName().Version);
+
+            csv.NextRecord();
+            csv.NextRecord();
         }
 
         #endregion CSV
@@ -401,10 +419,6 @@ namespace LSL_Kinect
         private void UpdateBroadcastState()
         {
             isBroadcasting = !isBroadcasting;
-            if (isBroadcasting)
-                SendStartBroadcastMarker();
-            else
-                SendEndBroadcastMarker();
 
             UpdateIndicator(broadcastingStateIndicator, isBroadcasting);
             broadcastButton.Content = (isBroadcasting == true) ? "Stop broadcast" : "Start broadcast";
@@ -414,6 +428,7 @@ namespace LSL_Kinect
         {
             currentIndicator.Fill = (status) ? Brushes.Green : Brushes.Red;
         }
+
         #endregion Display
 
         #region Events
@@ -469,24 +484,29 @@ namespace LSL_Kinect
         {
             UpdateBroadcastState();
             UpdateBroadcastRelatedButtons();
+
             if (isBroadcasting)
             {
-                CreateDataTable();
+                CreateDataTables();
+                SendStartBroadcastMarker();
             }
+            else
+                SendEndBroadcastMarker();
         }
 
         private void OnCSVBtnClicked(object sender, RoutedEventArgs e)
         {
-            if (currentDataTable != null)
+            if (moCapDataTable != null && markerDataTable != null)
             {
-                WriteCSVFile(currentDataTable);
+                WriteCSVFile(moCapDataTable);
+                WriteCSVFile(markerDataTable);
             }
         }
 
         private void OnSendMarkerBtnClicked(object sender, RoutedEventArgs e)
         {
             spaceBarPressCounter++;
-            String[] dataMarker = new String[] { spaceBarPressCounter.ToString(), spaceBarPressCounter.ToString() };
+            String[] dataMarker = new String[] { "Custom marker : " + spaceBarPressCounter.ToString() };
             SendMarker(dataMarker);
             LslNumberSpaceBarPress.Text = (spaceBarPressCounter - 1) + " at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
         }
