@@ -19,7 +19,7 @@ namespace LSL_Kinect.Properties {
     // à l'aide d'un outil, tel que ResGen ou Visual Studio.
     // Pour ajouter ou supprimer un membre, modifiez votre fichier .ResX, puis réexécutez ResGen
     // avec l'option /str ou régénérez votre projet VS.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -57,6 +57,87 @@ namespace LSL_Kinect.Properties {
             }
             set {
                 resourceCulture = value;
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 1.
+        /// </summary>
+        internal static string Marker1 {
+            get {
+                return ResourceManager.GetString("Marker1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 2.
+        /// </summary>
+        internal static string Marker2 {
+            get {
+                return ResourceManager.GetString("Marker2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 3.
+        /// </summary>
+        internal static string Marker3 {
+            get {
+                return ResourceManager.GetString("Marker3", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 4.
+        /// </summary>
+        internal static string Marker4 {
+            get {
+                return ResourceManager.GetString("Marker4", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 5.
+        /// </summary>
+        internal static string Marker5 {
+            get {
+                return ResourceManager.GetString("Marker5", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 6.
+        /// </summary>
+        internal static string Marker6 {
+            get {
+                return ResourceManager.GetString("Marker6", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 7.
+        /// </summary>
+        internal static string Marker7 {
+            get {
+                return ResourceManager.GetString("Marker7", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 8.
+        /// </summary>
+        internal static string Marker8 {
+            get {
+                return ResourceManager.GetString("Marker8", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Kinect Marker 9.
+        /// </summary>
+        internal static string Marker9 {
+            get {
+                return ResourceManager.GetString("Marker9", resourceCulture);
             }
         }
     }

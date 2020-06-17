@@ -4,14 +4,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LSL_Kinect"
-        xmlns:Classes="clr-namespace:LSL_Kinect.Classes" x:Name="Kinect_Capture" x:Class="LSL_Kinect.MainWindow"
+        xmlns:Classes="clr-namespace:LSL_Kinect.Classes" xmlns:System="clr-namespace:System;assembly=mscorlib" x:Name="Kinect_Capture" x:Class="LSL_Kinect.MainWindow"
         mc:Ignorable="d"
         Title="Kinect Capture"
         Closing="OnWindowClosing"
         SizeToContent = "WidthAndHeight"
         Activated="OnWindowGetFocus"
         Deactivated="OnWindowLostFocus"
-        KeyUp="OnKeyUp" 
+        KeyDown="OnKeyDown"
         ResizeMode="CanResizeWithGrip" 
         ScrollViewer.VerticalScrollBarVisibility="Disabled" 
         Background="White">
@@ -55,7 +55,7 @@
             <GroupBox x:Name="bodyTrackingPanel" Header="Body Tracking" Margin="5" Visibility="Collapsed">
                 <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="5">
                     <Label Content="Selected Body ID : " Margin="10" VerticalAlignment="Center" />
-                    <ComboBox Width="100" Height="30" ItemsSource="{Binding IdList}" SelectionChanged="OnIdListSelectionChanged">
+                    <ComboBox Width="100" Height="30" ItemsSource="{Binding IdList}" SelectionChanged="OnIdListSelectionChanged" ToolTip="{DynamicResource SELECT_ID_COMBOBOX_TOOLTIP}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding shortIDString}" VerticalAlignment="Center" HorizontalAlignment="Center" />
@@ -69,7 +69,7 @@
                 <StackPanel  Orientation="Vertical">
                     <Button x:Name="broadcastButton" Content="Start Broadcast" Width="100"  Click="OnBroadcastButtonClicked"  Margin="5" />
                     <Button x:Name="ExportCSVButton" Content="Export CSV" Width="100" Click="OnCSVBtnClicked" Margin="5" />
-                    <Button  x:Name="SendLslMarkerButton" Content="Send LSL Marker" Width="100"  Click="OnSendMarkerBtnClicked"  Margin="5" />
+                    <Button  x:Name="SendLslMarkerButton" Content="Send LSL Marker" Width="100"  Click="OnSendMarkerKeyPressed" ToolTip="M"  Margin="5" />
                     <Label  Content="LSL Marker sent : " Margin="5" VerticalAlignment="Center" />
                     <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" Margin="5" HorizontalAlignment="Center" />
                 </StackPanel>

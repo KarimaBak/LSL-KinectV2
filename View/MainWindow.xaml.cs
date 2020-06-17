@@ -12,8 +12,10 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Input;
 using System.Windows.Shapes;
 using Brushes = System.Windows.Media.Brushes;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Path = System.IO.Path;
 
 namespace LSL_Kinect
@@ -63,7 +65,7 @@ namespace LSL_Kinect
         private double localClockStartingPoint = -1;
         private liblsl.StreamOutlet outletData = null;
         private liblsl.StreamOutlet outletMarker = null;
-        private int spaceBarPressCounter = 0;
+        private int customMarkerCount = 0;
 
         private DataTable moCapDataTable = null;
         private DataTable markerDataTable = null;
@@ -285,6 +287,7 @@ namespace LSL_Kinect
 
         private void SendMarker(string[] dataMarker)
         {
+            LslNumberSpaceBarPress.Text = "\"" + dataMarker[0] + "\" at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
             AddRowToDataTable(markerDataTable, dataMarker);
             outletMarker.push_sample(dataMarker, liblsl.local_clock() - localClockStartingPoint);
         }
@@ -412,7 +415,7 @@ namespace LSL_Kinect
 
         private void UpdateBroadcastRelatedButtons()
         {
-            ExportCSVButton.IsEnabled = !isBroadcasting;
+            ExportCSVButton.IsEnabled = !isBroadcasting && selectedBodyID != null;
             SendLslMarkerButton.IsEnabled = isBroadcasting;
         }
 
@@ -503,23 +506,66 @@ namespace LSL_Kinect
             }
         }
 
-        private void OnSendMarkerBtnClicked(object sender, RoutedEventArgs e)
+        private void OnSendMarkerKeyPressed(object sender, RoutedEventArgs e)
         {
-            spaceBarPressCounter++;
-            String[] dataMarker = new String[] { "Custom marker : " + spaceBarPressCounter.ToString() };
+            customMarkerCount++;
+            String[] dataMarker = new String[] { "Custom marker : " + customMarkerCount.ToString() };
             SendMarker(dataMarker);
-            LslNumberSpaceBarPress.Text = (spaceBarPressCounter - 1) + " at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
         }
 
         #endregion Button Event
 
         #region Keyboard event
 
-        private void OnKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+        private void OnKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == System.Windows.Input.Key.Space)
+            if (isBroadcasting)
             {
-                OnSendMarkerBtnClicked(null, null);
+                if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                {
+                    switch (e.Key)
+                    {
+                        case Key.D1:
+                            SendMarker(new string[] { Properties.Resources.Marker1 });
+                            break;
+
+                        case Key.D2:
+                            SendMarker(new string[] { Properties.Resources.Marker2 });
+                            break;
+
+                        case Key.D3:
+                            SendMarker(new string[] { Properties.Resources.Marker3 });
+                            break;
+
+                        case Key.D4:
+                            SendMarker(new string[] { Properties.Resources.Marker4 });
+                            break;
+
+                        case Key.D5:
+                            SendMarker(new string[] { Properties.Resources.Marker5 });
+                            break;
+
+                        case Key.D6:
+                            SendMarker(new string[] { Properties.Resources.Marker6 });
+                            break;
+
+                        case Key.D7:
+                            SendMarker(new string[] { Properties.Resources.Marker7 });
+                            break;
+
+                        case Key.D8:
+                            SendMarker(new string[] { Properties.Resources.Marker8 });
+                            break;
+
+                        case Key.D9:
+                            SendMarker(new string[] { Properties.Resources.Marker9 });
+                            break;
+                    }
+                }
+                if (e.Key == Key.M)
+                {
+                    OnSendMarkerKeyPressed(null, null);
+                }
             }
         }
 
