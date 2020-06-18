@@ -2,7 +2,7 @@
 
 namespace LSL_Kinect
 {
-    public static class Constantes
+    public static class Constants
     {
         #region Constants
         //TODO Move to ressources file or smth

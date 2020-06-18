@@ -64,8 +64,8 @@ namespace LSL_Kinect
                 _width = frame.FrameDescription.Width;
                 _height = frame.FrameDescription.Height;
                 _depthData = new ushort[_width * _height];
-                _pixels = new byte[_width * _height * Constantes.BYTES_PER_PIXEL];
-                _bitmap = new WriteableBitmap(_width, _height, Constantes.DPI, Constantes.DPI, Constantes.FORMAT, null);
+                _pixels = new byte[_width * _height * Constants.BYTES_PER_PIXEL];
+                _bitmap = new WriteableBitmap(_width, _height, Constants.DPI, Constants.DPI, Constants.FORMAT, null);
             }
 
             frame.CopyFrameDataToArray(_depthData);
@@ -119,8 +119,8 @@ namespace LSL_Kinect
                 _height = depthFrame.FrameDescription.Height;
                 _depthData = new ushort[_width * _height];
                 _bodyData = new byte[_width * _height];
-                _pixels = new byte[_width * _height * Constantes.BYTES_PER_PIXEL];
-                _bitmap = new WriteableBitmap(_width, _height, Constantes.DPI, Constantes.DPI, Constantes.FORMAT, null);
+                _pixels = new byte[_width * _height * Constants.BYTES_PER_PIXEL];
+                _bitmap = new WriteableBitmap(_width, _height, Constants.DPI, Constants.DPI, Constants.FORMAT, null);
             }
 
             depthFrame.CopyFrameDataToArray(_depthData);

@@ -99,7 +99,7 @@
     <Compile Include="Model\Unused\Skeleton.cs" />
     <Compile Include="Model\Drawing.cs" />
     <Compile Include="Model\Unused\DepthSpace.cs" />
-    <Compile Include="Model\Constantes.cs" />
+    <Compile Include="Model\Constants.cs" />
     <Compile Include="Model\BitmapGeneration.cs" />
     <Compile Include="View\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

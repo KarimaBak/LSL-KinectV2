@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -13,6 +14,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Brushes = System.Windows.Media.Brushes;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -74,6 +77,8 @@ namespace LSL_Kinect
         private bool isKinectAvailable = false;
         private bool isBroadcasting = false;
 
+        Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
+
         #endregion Private Variables
 
         #region Constants
@@ -82,6 +87,10 @@ namespace LSL_Kinect
         private const int CHANNELS_PER_JOINT = 4;
         private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT);
         private const int MAX_SKELETON_TRACKED = 1;
+        //This was calculated by fixing the height of both depth and color image and comparing the width
+        private const double WIDTH_RATIO_BETWEEN_DEPTH_COLOR = 0.68;
+        private const double WIDTH_OFFSET_RATIO_BETWEEN_DEPTH_COLOR = (1 - WIDTH_RATIO_BETWEEN_DEPTH_COLOR + 0.05) / 2;
+
 
         /* Can be used if we decide to track multiple skeletons at the same time
         private const int CHANNELS_PER_STREAM = MAX_SKELETON_TRACKED * CHANNELS_PER_SKELETON;
@@ -103,6 +112,7 @@ namespace LSL_Kinect
 
         private void InitiateDisplay()
         {
+            cameraColorDetectionRect = GetDetectionBoundaries();
             UpdateBroadcastRelatedButtons();
         }
 
@@ -402,10 +412,21 @@ namespace LSL_Kinect
                 if (frame != null)
                 {
                     SetFpsCounter(frame);
-                    camera.Source = frame.ToBitmap();
+                    BitmapSource bitmapSource = frame.ToBitmap();
+                    CroppedBitmap croppedBitmap = new CroppedBitmap(bitmapSource, cameraColorDetectionRect);
+                    camera.Source = croppedBitmap;
                 }
             }
         }
+
+
+        private Int32Rect GetDetectionBoundaries()
+        {
+            //We know that the depth Camera has a greater height than the color camera so it's safe to put the max value
+            Int32Rect depthSpaceInColorFormat = new Int32Rect(Convert.ToInt32(1920 * (WIDTH_OFFSET_RATIO_BETWEEN_DEPTH_COLOR)), 0, Convert.ToInt32(1920 * WIDTH_RATIO_BETWEEN_DEPTH_COLOR), 1080);
+            return depthSpaceInColorFormat;
+        }
+
 
         private void SetFpsCounter(ColorFrame frame)
         {

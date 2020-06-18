@@ -28,9 +28,9 @@ namespace LSL_Kinect
             {
                 _width = frame.FrameDescription.Width;
                 _height = frame.FrameDescription.Height;
-                _pixels = new byte[_width * _height * Constantes.BYTES_PER_PIXEL];
+                _pixels = new byte[_width * _height * Constants.BYTES_PER_PIXEL];
                 _bitmap = new WriteableBitmap(_width, _height, 
-                    Constantes.DPI, Constantes.DPI, Constantes.FORMAT, null);
+                    Constants.DPI, Constants.DPI, Constants.FORMAT, null);
             }
 
             if (frame.RawColorImageFormat == ColorImageFormat.Bgra)
