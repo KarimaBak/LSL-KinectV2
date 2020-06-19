@@ -477,12 +477,14 @@ namespace LSL_Kinect
 
         private void OnWindowLostFocus(object sender, EventArgs e)
         {
-            blurEffect.Radius = 15;
+            //Add here function to alert the windows lost focus.
+            //But remember the camera rendering needs to stay visible, even if the window is not the main focus
+            //blurEffect.Radius = 15;
         }
 
         private void OnWindowGetFocus(object sender, EventArgs e)
         {
-            blurEffect.Radius = 0;
+            //blurEffect.Radius = 0;
         }
 
         private void OnWindowClosing(object sender, CancelEventArgs e)
