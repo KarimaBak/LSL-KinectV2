@@ -10,6 +10,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Security;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -87,10 +88,6 @@ namespace LSL_Kinect
         private const int CHANNELS_PER_JOINT = 4;
         private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT);
         private const int MAX_SKELETON_TRACKED = 1;
-        //This was calculated by fixing the height of both depth and color image and comparing the width
-        private const double WIDTH_RATIO_BETWEEN_DEPTH_COLOR = 0.68;
-        private const double WIDTH_OFFSET_RATIO_BETWEEN_DEPTH_COLOR = (1 - WIDTH_RATIO_BETWEEN_DEPTH_COLOR + 0.05) / 2;
-
 
         /* Can be used if we decide to track multiple skeletons at the same time
         private const int CHANNELS_PER_STREAM = MAX_SKELETON_TRACKED * CHANNELS_PER_SKELETON;
@@ -417,13 +414,16 @@ namespace LSL_Kinect
                     camera.Source = croppedBitmap;
                 }
             }
+
         }
 
 
         private Int32Rect GetDetectionBoundaries()
         {
             //We know that the depth Camera has a greater height than the color camera so it's safe to put the max value
-            Int32Rect depthSpaceInColorFormat = new Int32Rect(Convert.ToInt32(1920 * (WIDTH_OFFSET_RATIO_BETWEEN_DEPTH_COLOR)), 0, Convert.ToInt32(1920 * WIDTH_RATIO_BETWEEN_DEPTH_COLOR), 1080);
+            Int32Rect depthSpaceInColorFormat = 
+                new Int32Rect(Constants.PIXEL_TOTAL_OFFSET_BETWEEN_DEPTH_AND_COLOR, 0, Constants.CROPPED_CAMERA_WIDTH, 1080);
+
             return depthSpaceInColorFormat;
         }
 
@@ -538,13 +538,13 @@ namespace LSL_Kinect
 
         #region Keyboard event
 
-        private void OnKeyDown(object sender, KeyEventArgs e)
+        private void OnKeyDown(object eventSender, KeyEventArgs keyEventArgs)
         {
             if (isBroadcasting)
             {
-                if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                if (keyEventArgs.KeyboardDevice.Modifiers == ModifierKeys.Control)
                 {
-                    switch (e.Key)
+                    switch (keyEventArgs.Key)
                     {
                         case Key.D1:
                             SendMarker(new string[] { Properties.Resources.Marker1 });
@@ -583,9 +583,15 @@ namespace LSL_Kinect
                             break;
                     }
                 }
-                if (e.Key == Key.M)
+
+                switch (keyEventArgs.Key)
                 {
-                    OnSendMarkerKeyPressed(null, null);
+                    case Key.M:
+                        OnSendMarkerKeyPressed(null, null);
+                        break;
+                    case Key.Space:
+                        OnBroadcastButtonClicked(null, null);
+                        break;
                 }
             }
         }

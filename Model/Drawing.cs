@@ -1,18 +1,15 @@
 ﻿using LSL_Kinect.Classes;
 using Microsoft.Kinect;
-using System;
+using LSL_Kinect.Tools;
 using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 
 namespace LSL_Kinect
 {
     public class Drawing
     {
-        private const float KinectCameraColorWidth = 1920;
-        private const float KinectCameraColorHeight= 1080;
 
         public BodyIdWrapper associatedBodyID = null;
 
@@ -25,34 +22,40 @@ namespace LSL_Kinect
             coordinateMapper = _coordinateMapper;
         }
 
-        public ColorSpacePoint ScaleTo(Joint joint, double width, double height)
+        public ColorSpacePoint ScaleToCanvas(Joint joint, double canvasWidth, double canvasHeight)
         {
             //For color mode only
             ColorSpacePoint colorPoint = coordinateMapper.MapCameraPointToColorSpace(joint.Position);
 
-            colorPoint.X = Scale(width, 0, KinectCameraColorWidth, colorPoint.X);
-            colorPoint.Y = Scale(height, 0, KinectCameraColorHeight, colorPoint.Y);
+            colorPoint.X = Scale(0, canvasWidth,
+                Constants.PIXEL_TOTAL_OFFSET_BETWEEN_DEPTH_AND_COLOR,  
+                Constants.CROPPED_CAMERA_WIDTH + Constants.PIXEL_TOTAL_OFFSET_BETWEEN_DEPTH_AND_COLOR, 
+                colorPoint.X);
+
+            colorPoint.Y = Scale(0,canvasHeight, 
+                0, Constants.KINECT_COLOR_CAMERA_HEIGHT, 
+                colorPoint.Y);
 
             return colorPoint;
         }
 
-        public float Scale(double maxPixel, double minAxis, double maxAxis, float position)
+        public float Scale(double minPixel, double maxPixel, double minAxis, double maxAxis, float position)
         {
-            float normalizedPos = (float) ((position - minAxis) / (maxAxis - minAxis));
+            float normalizedPos = (float) Tools.Tools.InverseLerp(minAxis, maxAxis, position);
 
-            float posScaled = (float) (minAxis + (normalizedPos * (maxPixel - minAxis)));
+            float posScaledToCanvas = (float) Tools.Tools.UnclampedLerp(minPixel,maxPixel,normalizedPos);
 
-            if (posScaled > maxPixel)
+            if (posScaledToCanvas > maxPixel)
             {
                 return (float)maxPixel;
             }
 
-            if (posScaled < 0)
+            if (posScaledToCanvas < 0)
             {
                 return 0;
             }
 
-            return posScaled;
+            return posScaledToCanvas;
         }
 
         public void DrawSkeleton(Canvas canvas, Body body)
@@ -72,8 +75,6 @@ namespace LSL_Kinect
                     position.Z = InferredZPositionClamp;
                 }
             }
-
-            DrawId(canvas, body.Joints[JointType.Head], body.TrackingId);
 
             DrawLine(canvas, body.Joints[JointType.Head], body.Joints[JointType.Neck]);
             DrawLine(canvas, body.Joints[JointType.Neck], body.Joints[JointType.SpineShoulder]);
@@ -99,13 +100,15 @@ namespace LSL_Kinect
             DrawLine(canvas, body.Joints[JointType.KneeRight], body.Joints[JointType.AnkleRight]);
             DrawLine(canvas, body.Joints[JointType.AnkleLeft], body.Joints[JointType.FootLeft]);
             DrawLine(canvas, body.Joints[JointType.AnkleRight], body.Joints[JointType.FootRight]);
+
+            DrawId(canvas, body.Joints[JointType.Head], body.TrackingId);
         }
 
         public void DrawId(Canvas canvas, Joint head, ulong id)
         {
             if (head.TrackingState == TrackingState.Tracked)
             {
-                ColorSpacePoint headJoint = ScaleTo(head, canvas.ActualWidth, canvas.ActualHeight);
+                ColorSpacePoint headJoint = ScaleToCanvas(head, canvas.ActualWidth, canvas.ActualHeight);
 
                 Canvas.SetLeft(IdLabel, headJoint.X + (IdLabel.ActualWidth * 0.5));
                 Canvas.SetTop(IdLabel, headJoint.Y - (IdLabel.ActualHeight * 0.5));
@@ -119,7 +122,7 @@ namespace LSL_Kinect
 
         public void DrawPoint(Canvas canvas, Joint joint)
         {
-            ColorSpacePoint jointPos = ScaleTo(joint, canvas.ActualWidth, canvas.ActualHeight);
+            ColorSpacePoint jointPos = ScaleToCanvas(joint, canvas.ActualWidth, canvas.ActualHeight);
 
             int size = 0;
             SolidColorBrush color = null;
@@ -157,8 +160,8 @@ namespace LSL_Kinect
 
         public void DrawLine(Canvas canvas, Joint first, Joint second)
         {
-            ColorSpacePoint firstJointPos = ScaleTo(first, canvas.ActualWidth, canvas.ActualHeight);
-            ColorSpacePoint secondJointPos = ScaleTo(second, canvas.ActualWidth, canvas.ActualHeight);
+            ColorSpacePoint firstJointPos = ScaleToCanvas(first, canvas.ActualWidth, canvas.ActualHeight);
+            ColorSpacePoint secondJointPos = ScaleToCanvas(second, canvas.ActualWidth, canvas.ActualHeight);
 
             int thickness = 0;
             SolidColorBrush color = null;
