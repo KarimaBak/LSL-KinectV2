@@ -41,6 +41,9 @@
 
                 <Label Content="Broadcasting :" Margin="10" />
                 <Ellipse x:Name="broadcastingStateIndicator" Fill="Red" />
+
+                <Label  Content="CSV file folder : " Margin="10,10,0,10" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                <TextBlock x:Name="csvPathTextBlock" Text="{Binding CsvPath}" VerticalAlignment="Center" />
             </StackPanel>
         </GroupBox>
 
@@ -69,11 +72,11 @@
 
             <GroupBox x:Name="broadcastPanel" Grid.RowSpan="2" Header="Broadcast" Margin="5" Visibility="Collapsed">
                 <StackPanel  Orientation="Vertical">
-                    <Button x:Name="broadcastButton" Content="Start Broadcast" Width="100"  Click="OnBroadcastButtonClicked"  Margin="5" />
-                    <Button x:Name="ExportCSVButton" Content="Export CSV" Width="100" Click="OnCSVBtnClicked" Margin="5" />
+                    <Button x:Name="broadcastButton" Content="Start Broadcast" Width="100"  Click="OnBroadcastButtonClicked"  Margin="5" ToolTip="Spacebar"/>
                     <Button  x:Name="SendLslMarkerButton" Content="Send LSL Marker" Width="100"  Click="OnSendMarkerKeyPressed" ToolTip="M"  Margin="5" />
+                    
                     <Label  Content="LSL Marker sent : " Margin="5" VerticalAlignment="Center" />
-                    <TextBlock x:Name="LslNumberSpaceBarPress" Text="-----" Margin="5" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="markerDescriptionTextBlock" Text="-----" Margin="5" HorizontalAlignment="Center" />
                 </StackPanel>
             </GroupBox>
         </StackPanel>

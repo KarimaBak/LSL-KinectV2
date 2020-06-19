@@ -9,12 +9,26 @@ namespace LSL_Kinect.Classes
     {
 		public ObservableCollection<BodyIdWrapper> IdList { get; set; }
 
+		private string csvPath;
+		public string CsvPath
+		{
+			set
+			{
+				csvPath = value;
+				OnPropertyChanged("CsvPath");
+			}
+			get
+			{
+				return csvPath;
+			}
+		}
+
 		public MainWindowViewModel()
 		{
 			IdList = new ObservableCollection<BodyIdWrapper>();
 		}
 
-		public void AddData(BodyIdWrapper newIdWrapper)
+		public void AddBodyID(BodyIdWrapper newIdWrapper)
         {
 			IdList.Add(newIdWrapper);
 		}

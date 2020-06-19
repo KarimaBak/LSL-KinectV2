@@ -6,21 +6,16 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Security;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Brushes = System.Windows.Media.Brushes;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
-using Path = System.IO.Path;
 
 namespace LSL_Kinect
 {
@@ -78,7 +73,7 @@ namespace LSL_Kinect
         private bool isKinectAvailable = false;
         private bool isBroadcasting = false;
 
-        Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
+        private Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
 
         #endregion Private Variables
 
@@ -104,6 +99,7 @@ namespace LSL_Kinect
             RegisterKinect();
             InitiateDisplay();
 
+            SetBaseCSVPath();
             SetLSLStreamInfo();
         }
 
@@ -264,7 +260,7 @@ namespace LSL_Kinect
             if (correspondingSkeletton == null)
             {
                 BodyIdWrapper newWrapper = new BodyIdWrapper(body.TrackingId);
-                currentViewModel.AddData(newWrapper);
+                currentViewModel.AddBodyID(newWrapper);
 
                 correspondingSkeletton = new Drawing(newWrapper, currentKinectSensor.CoordinateMapper);
                 skelettonsDrawing.Add(correspondingSkeletton);
@@ -294,7 +290,7 @@ namespace LSL_Kinect
 
         private void SendMarker(string[] dataMarker)
         {
-            LslNumberSpaceBarPress.Text = "\"" + dataMarker[0] + "\" at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
+            markerDescriptionTextBlock.Text = "\"" + dataMarker[0] + "\" at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
             AddRowToDataTable(markerDataTable, dataMarker);
             outletMarker.push_sample(dataMarker, liblsl.local_clock() - localClockStartingPoint);
         }
@@ -312,6 +308,12 @@ namespace LSL_Kinect
         #endregion Marker
 
         #region CSV
+
+        private void SetBaseCSVPath()
+        {
+            currentCSVpath = Directory.GetCurrentDirectory() + "\\";
+            currentViewModel.CsvPath = currentCSVpath;
+        }
 
         //Create a data table to store stream data
         private void CreateDataTables()
@@ -349,37 +351,31 @@ namespace LSL_Kinect
 
         private void WriteCSVFile(DataTable dataTable)
         {
-            SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Filter = "CSV files(*.csv) | *.csv";
-            saveFileDialog.InitialDirectory = currentCSVpath;
-            saveFileDialog.FileName = dataTable.TableName;
+            string extension = ".csv";
+            string date = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            string FileName = dataTable.TableName + " " + date;
 
-            if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            using (var writer = new StreamWriter(currentCSVpath + FileName + extension))
+            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
-                currentCSVpath = Path.GetDirectoryName(saveFileDialog.FileName);
+                WriteCSVHeader(csv);
 
-                using (var writer = new StreamWriter(saveFileDialog.FileName))
-                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                foreach (DataColumn column in dataTable.Columns)
                 {
-                    WriteCSVHeader(csv);
+                    csv.WriteField(column.ColumnName);
+                }
+                csv.NextRecord();
 
+                foreach (DataRow row in dataTable.Rows)
+                {
                     foreach (DataColumn column in dataTable.Columns)
                     {
-                        csv.WriteField(column.ColumnName);
+                        csv.WriteField(row[column]);
                     }
                     csv.NextRecord();
-
-                    foreach (DataRow row in dataTable.Rows)
-                    {
-                        foreach (DataColumn column in dataTable.Columns)
-                        {
-                            csv.WriteField(row[column]);
-                        }
-                        csv.NextRecord();
-                    }
-
-                    writer.Dispose();
                 }
+
+                writer.Dispose();
             }
         }
 
@@ -414,19 +410,16 @@ namespace LSL_Kinect
                     camera.Source = croppedBitmap;
                 }
             }
-
         }
-
 
         private Int32Rect GetDetectionBoundaries()
         {
             //We know that the depth Camera has a greater height than the color camera so it's safe to put the max value
-            Int32Rect depthSpaceInColorFormat = 
+            Int32Rect depthSpaceInColorFormat =
                 new Int32Rect(Constants.PIXEL_TOTAL_OFFSET_BETWEEN_DEPTH_AND_COLOR, 0, Constants.CROPPED_CAMERA_WIDTH, 1080);
 
             return depthSpaceInColorFormat;
         }
-
 
         private void SetFpsCounter(ColorFrame frame)
         {
@@ -436,7 +429,6 @@ namespace LSL_Kinect
 
         private void UpdateBroadcastRelatedButtons()
         {
-            ExportCSVButton.IsEnabled = !isBroadcasting && selectedBodyID != null;
             SendLslMarkerButton.IsEnabled = isBroadcasting;
         }
 
@@ -517,13 +509,8 @@ namespace LSL_Kinect
                 SendStartBroadcastMarker();
             }
             else
-                SendEndBroadcastMarker();
-        }
-
-        private void OnCSVBtnClicked(object sender, RoutedEventArgs e)
-        {
-            if (moCapDataTable != null && markerDataTable != null)
             {
+                SendEndBroadcastMarker();
                 WriteCSVFile(moCapDataTable);
                 WriteCSVFile(markerDataTable);
             }
@@ -540,6 +527,7 @@ namespace LSL_Kinect
 
         #region Keyboard event
 
+        //Try to replace with command in view model instead
         private void OnKeyDown(object eventSender, KeyEventArgs keyEventArgs)
         {
             if (isBroadcasting)
@@ -585,16 +573,14 @@ namespace LSL_Kinect
                             break;
                     }
                 }
-
-                switch (keyEventArgs.Key)
+                else if (keyEventArgs.Key == Key.M)
                 {
-                    case Key.M:
-                        OnSendMarkerKeyPressed(null, null);
-                        break;
-                    case Key.Space:
-                        OnBroadcastButtonClicked(null, null);
-                        break;
+                    OnSendMarkerKeyPressed(null, null);
                 }
+            }
+            else if (keyEventArgs.Key == Key.Space)
+            {
+                OnBroadcastButtonClicked(null, null);
             }
         }
 
