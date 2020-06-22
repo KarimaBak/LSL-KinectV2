@@ -1,5 +1,4 @@
 ﻿using CsvHelper;
-using LSL;
 using LSL_Kinect.Classes;
 using Microsoft.Kinect;
 using System;
@@ -9,11 +8,14 @@ using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using static LSL.liblsl;
 using Brushes = System.Windows.Media.Brushes;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
@@ -62,9 +64,11 @@ namespace LSL_Kinect
         private BodyIdWrapper selectedBodyID = null;
 
         private double localClockStartingPoint = -1;
-        private liblsl.StreamOutlet outletData = null;
-        private liblsl.StreamOutlet outletMarker = null;
+        private StreamOutlet outletData = null;
+        private StreamOutlet outletMarker = null;
         private int customMarkerCount = 0;
+
+        private StreamInlet instructionMarkerStream = null;
 
         private DataTable moCapDataTable = null;
         private DataTable markerDataTable = null;
@@ -74,6 +78,14 @@ namespace LSL_Kinect
         private bool isBroadcasting = false;
 
         private Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
+
+        public delegate void InstructionStreamFoundHandler();
+
+        public event InstructionStreamFoundHandler InstructionStreamFound;
+
+        private static readonly Regex doRecordRegex = new Regex("DoRecord");
+        private static readonly Regex doPauseRegex = new Regex("DoPause");
+        private static readonly Regex closeRegex = new Regex("WINDOW_CLOSING");
 
         #endregion Private Variables
 
@@ -101,6 +113,8 @@ namespace LSL_Kinect
 
             SetBaseCSVPath();
             SetLSLStreamInfo();
+
+            GetLslInstructionMarkerStream();
         }
 
         private void InitiateDisplay()
@@ -117,29 +131,29 @@ namespace LSL_Kinect
 
             readerMultiFrame =
                 currentKinectSensor.OpenMultiSourceFrameReader(FrameSourceTypes.Color | FrameSourceTypes.Body);
-            readerMultiFrame.MultiSourceFrameArrived += ManageMultiSourceFrame;
+            readerMultiFrame.MultiSourceFrameArrived += OnKinectFrameArrived;
         }
 
         private void SetLSLStreamInfo()
         {
-            localClockStartingPoint = liblsl.local_clock();
+            localClockStartingPoint = local_clock();
             SetMoCapStreamDefinition();
             SetMarkersStreamDefinition();
         }
 
         private void SetMarkersStreamDefinition()
         {
-            liblsl.StreamInfo streamMarker = new liblsl.StreamInfo("EuroMov-Markers-Kinect", "Markers", 1, 0, liblsl.channel_format_t.cf_string, currentKinectSensor.UniqueKinectId);
-            outletMarker = new liblsl.StreamOutlet(streamMarker);
+            StreamInfo streamMarker = new StreamInfo("EuroMov-Markers-Kinect", "Markers", 1, 0, channel_format_t.cf_string, currentKinectSensor.UniqueKinectId);
+            outletMarker = new StreamOutlet(streamMarker);
         }
 
         private void SetMoCapStreamDefinition()
         {
-            liblsl.StreamInfo mocapStreamMetaData =
-                            new liblsl.StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
-                            CHANNELS_PER_SKELETON, 15, liblsl.channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
+            StreamInfo mocapStreamMetaData =
+                            new StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
+                            CHANNELS_PER_SKELETON, 15, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
 
-            liblsl.XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
+            XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
 
             for (int skeletonNumber = 0; skeletonNumber < MAX_SKELETON_TRACKED; skeletonNumber++)
             {
@@ -160,10 +174,10 @@ namespace LSL_Kinect
                 .append_child_value("manufacturer", "Microsoft")
                 .append_child_value("model", "Kinect 2.0");
 
-            outletData = new liblsl.StreamOutlet(mocapStreamMetaData);
+            outletData = new StreamOutlet(mocapStreamMetaData);
         }
 
-        private void AddNewJointChannel(liblsl.XMLElement parent, string jointValueName, MoCapChannelType type, string unit)
+        private void AddNewJointChannel(XMLElement parent, string jointValueName, MoCapChannelType type, string unit)
         {
             parent.append_child("channel")
                 .append_child_value("label", jointValueName)
@@ -173,7 +187,7 @@ namespace LSL_Kinect
 
         private void SendLslDataOneBodyTracked(float[] data)
         {
-            outletData.push_sample(data, liblsl.local_clock() - localClockStartingPoint);
+            outletData.push_sample(data, local_clock() - localClockStartingPoint);
         }
 
         private float[] GetSelectedBodyData(Body body)
@@ -212,14 +226,6 @@ namespace LSL_Kinect
                 }
             }
             return null;
-        }
-
-        private void ManageMultiSourceFrame(object sender, MultiSourceFrameArrivedEventArgs frameArgs)
-        {
-            MultiSourceFrame acquiredFrame = frameArgs.FrameReference.AcquireFrame();
-            UpdateCameraImage(acquiredFrame);
-            GetBodiesData(acquiredFrame);
-            ManageBodiesData();
         }
 
         private void ManageBodiesData()
@@ -286,13 +292,81 @@ namespace LSL_Kinect
             }
         }
 
+        #region Remote Control
+
+        private void GetLslInstructionMarkerStream()
+        {
+            Thread findStreamThread = new Thread(GetInstructionMarkerStream)
+            {
+                Name = "GetInstructionMarkerStream",
+                IsBackground = true
+            };
+
+            InstructionStreamFound += OnInstructionStreamFound;
+            findStreamThread.Start();
+        }
+
+        private void StartReadingInstructionsMarkers()
+        {
+            Thread getMessageThread = new Thread(ReadInstructionMarker)
+            {
+                Name = "ReadInstructionMarker",
+                IsBackground = true
+            };
+
+            getMessageThread.Start();
+        }
+
+        private void GetInstructionMarkerStream()
+        {
+            Console.WriteLine("Looking for instruction stream...");
+
+            string predicate = "starts-with(name,'Mouse') and type='Markers' and source_id='MouseCircularMarkers'";
+            //By default, resolve_stream() run forever until it find somethign
+            StreamInfo[] results = resolve_stream(predicate);
+            instructionMarkerStream = new StreamInlet(results[0]);
+            InstructionStreamFound();
+
+            Console.WriteLine("Instruction stream found !");
+        }
+
+        private void ReadInstructionMarker()
+        {
+            Console.WriteLine("Reading instructions...");
+
+            while (instructionMarkerStream != null)
+            {
+                string[] message = new string[1];
+                //By default, pull_sample() run forever until it find something
+                instructionMarkerStream.pull_sample(message);
+
+                if (doRecordRegex.IsMatch(message[0]))
+                {
+                    Console.WriteLine("On start record");
+                }
+                if (doPauseRegex.IsMatch(message[0]))
+                {
+                    Console.WriteLine("On pause record");
+                }
+                if (closeRegex.IsMatch(message[0]))
+                {
+                    Console.WriteLine("On windows close");
+                    instructionMarkerStream = null;
+                }
+            }
+
+            Console.WriteLine("Stop Reading instruction.");
+        }
+
+        #endregion Remote Control
+
         #region Marker
 
         private void SendMarker(string[] dataMarker)
         {
             markerDescriptionTextBlock.Text = "\"" + dataMarker[0] + "\" at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
             AddRowToDataTable(markerDataTable, dataMarker);
-            outletMarker.push_sample(dataMarker, liblsl.local_clock() - localClockStartingPoint);
+            outletMarker.push_sample(dataMarker, local_clock() - localClockStartingPoint);
         }
 
         private void SendStartBroadcastMarker()
@@ -449,6 +523,19 @@ namespace LSL_Kinect
 
         #region Events
 
+        private void OnKinectFrameArrived(object sender, MultiSourceFrameArrivedEventArgs frameArgs)
+        {
+            MultiSourceFrame acquiredFrame = frameArgs.FrameReference.AcquireFrame();
+            UpdateCameraImage(acquiredFrame);
+            GetBodiesData(acquiredFrame);
+            ManageBodiesData();
+        }
+
+        private void OnInstructionStreamFound()
+        {
+            StartReadingInstructionsMarkers();
+        }
+
         private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
         {
             isKinectAvailable = args.IsAvailable;
@@ -461,7 +548,7 @@ namespace LSL_Kinect
         {
             broadcastPanel.Visibility = Visibility.Visible;
 
-            System.Windows.Controls.ComboBox comboBox = (sender as System.Windows.Controls.ComboBox);
+            ComboBox comboBox = (sender as ComboBox);
             selectedBodyID = (BodyIdWrapper)comboBox.SelectedItem;
         }
 
