@@ -50,45 +50,6 @@ namespace LSL_Kinect
 
     public partial class MainWindow : Window
     {
-        #region Private Variables
-
-        //-------------Variables-----------------------
-        private KinectSensor currentKinectSensor;
-
-        private MultiSourceFrameReader readerMultiFrame;
-
-        private Body[] bodies = null;
-        private List<Drawing> skelettonsDrawing = new List<Drawing>();
-        private MainWindowViewModel currentViewModel = new MainWindowViewModel();
-
-        private BodyIdWrapper selectedBodyID = null;
-
-        private double localClockStartingPoint = -1;
-        private StreamOutlet outletData = null;
-        private StreamOutlet outletMarker = null;
-        private int customMarkerCount = 0;
-
-        private StreamInlet instructionMarkerStream = null;
-
-        private DataTable moCapDataTable = null;
-        private DataTable markerDataTable = null;
-        private string currentCSVpath = null;
-
-        private bool isKinectAvailable = false;
-        private bool isBroadcasting = false;
-
-        private Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
-
-        public delegate void InstructionStreamFoundHandler();
-
-        public event InstructionStreamFoundHandler InstructionStreamFound;
-
-        private static readonly Regex doRecordRegex = new Regex("DoRecord");
-        private static readonly Regex doPauseRegex = new Regex("DoPause");
-        private static readonly Regex closeRegex = new Regex("WINDOW_CLOSING");
-
-        #endregion Private Variables
-
         #region Constants
 
         private const int JOINT_COUNT = 25;
@@ -103,6 +64,48 @@ namespace LSL_Kinect
 
         #endregion Constants
 
+        #region Private Variables
+
+        //-------------Variables-----------------------
+        private KinectSensor currentKinectSensor;
+
+        private MultiSourceFrameReader readerMultiFrame;
+
+        private Body[] bodies = null;
+        private List<Drawing> skelettonsDrawing = new List<Drawing>();
+        private MainWindowViewModel currentViewModel = new MainWindowViewModel();
+
+        private BodyIdWrapper selectedBodyID = null;
+
+        private int lastBroadcastUsedFrequency = -1;
+        private int currentFramerate = -1;
+        private double localClockStartingPoint = -1;
+        private StreamOutlet outletData = null;
+        private StreamOutlet outletMarker = null;
+        private int customMarkerCount = 0;
+
+        private StreamInlet instructionMarkerStream = null;
+
+        private DataTable moCapDataTable = null;
+        private DataTable markerDataTable = null;
+        private string currentCSVpath = null;
+
+        private bool isKinectAvailable = false;
+        private bool isBroadcasting = false;
+        private bool framerateHasChanged = false;
+
+        private Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
+
+        public delegate void InstructionStreamFoundHandler();
+
+        public event InstructionStreamFoundHandler InstructionStreamFound;
+
+        private static readonly Regex doRecordRegex = new Regex("DoRecord");
+        private static readonly Regex doPauseRegex = new Regex("DoPause");
+        private static readonly Regex closeRegex = new Regex("WINDOW_CLOSING");
+
+        #endregion Private Variables
+
         public MainWindow()
         {
             DataContext = currentViewModel;
@@ -112,15 +115,15 @@ namespace LSL_Kinect
             InitiateDisplay();
 
             SetBaseCSVPath();
-            SetLSLStreamInfo();
 
-            GetLslInstructionMarkerStream();
+            //TODO Integrate this when the general flow will be decided
+            //GetLslInstructionMarkerStream();
         }
 
         private void InitiateDisplay()
         {
             cameraColorDetectionRect = GetDetectionBoundaries();
-            UpdateBroadcastRelatedButtons();
+            UpdateBroadcastRelatedUI();
         }
 
         private void RegisterKinect()
@@ -151,7 +154,9 @@ namespace LSL_Kinect
         {
             StreamInfo mocapStreamMetaData =
                             new StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
-                            CHANNELS_PER_SKELETON, 15, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
+                            CHANNELS_PER_SKELETON, currentFramerate, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
+
+            lastBroadcastUsedFrequency = currentFramerate;
 
             XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
 
@@ -183,6 +188,23 @@ namespace LSL_Kinect
                 .append_child_value("label", jointValueName)
                 .append_child_value("type", type.ToString())
                 .append_child_value("unit", unit);
+        }
+        private void StartBroadcast()
+        {
+            framerateHasChanged = false;
+            SetLSLStreamInfo();
+            CreateDataTables();
+            SendStartBroadcastMarker();
+        }
+        private void StopBroadcast()
+        {
+            SendEndBroadcastMarker();
+            WriteCSVFile(moCapDataTable);
+            WriteCSVFile(markerDataTable);
+            if (framerateHasChanged)
+            {
+                MessageBox.Show("The framerate has changed during the broadcast, the output sampling rate might be innacurate.", "Warning !", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void SendLslDataOneBodyTracked(float[] data)
@@ -289,6 +311,21 @@ namespace LSL_Kinect
                     }
                     bodyFrame.GetAndRefreshBodyData(bodies);
                 }
+            }
+        }
+
+        private void ManageFramerate(ColorFrame frame)
+        {
+            int lastFramerate = currentFramerate;
+            currentFramerate = Convert.ToInt32(1.0 / frame.ColorCameraSettings.FrameInterval.TotalSeconds);
+
+            UpdateFpsCounter();
+
+            if (isBroadcasting && currentFramerate != lastFramerate)
+            {
+                framerateHasChanged = true;
+                string[] message = new string[1] { "The framerate has changed to " + currentFramerate.ToString() };
+                SendMarker(message);
             }
         }
 
@@ -453,10 +490,11 @@ namespace LSL_Kinect
             }
         }
 
-        private static void WriteCSVHeader(CsvWriter csv)
+        private void WriteCSVHeader(CsvWriter csv)
         {
             csv.WriteField("Software : " + Assembly.GetExecutingAssembly().GetName().Name);
             csv.WriteField("Version :" + Assembly.GetExecutingAssembly().GetName().Version);
+            csv.WriteField("Kinect framerate :" + lastBroadcastUsedFrequency.ToString());
 
             csv.NextRecord();
             csv.NextRecord();
@@ -466,10 +504,11 @@ namespace LSL_Kinect
 
         #region Display
 
-        private void UpdateKinectCaptureRelatedPanels()
+        private void UpdateKinectCaptureRelatedUI()
         {
             Visibility visibility = (isKinectAvailable) ? Visibility.Visible : Visibility.Collapsed;
             bodyTrackingPanel.Visibility = visibility;
+            UpdateIndicator(kinectStateIndicator, isKinectAvailable);
         }
 
         private void UpdateCameraImage(MultiSourceFrame acquiredFrame)
@@ -478,13 +517,14 @@ namespace LSL_Kinect
             {
                 if (frame != null)
                 {
-                    SetFpsCounter(frame);
+                    ManageFramerate(frame);
                     BitmapSource bitmapSource = frame.ToBitmap();
                     CroppedBitmap croppedBitmap = new CroppedBitmap(bitmapSource, cameraColorDetectionRect);
                     camera.Source = croppedBitmap;
                 }
             }
         }
+
 
         private Int32Rect GetDetectionBoundaries()
         {
@@ -495,22 +535,15 @@ namespace LSL_Kinect
             return depthSpaceInColorFormat;
         }
 
-        private void SetFpsCounter(ColorFrame frame)
+        private void UpdateFpsCounter()
         {
-            double fps = 1.0 / frame.ColorCameraSettings.FrameInterval.TotalSeconds;
-            fpsCounterLabel.Text = fps.ToString("0.") + " FPS";
+            fpsCounterLabel.Text = currentFramerate.ToString() + " FPS";
         }
 
-        private void UpdateBroadcastRelatedButtons()
+        private void UpdateBroadcastRelatedUI()
         {
-            SendLslMarkerButton.IsEnabled = isBroadcasting;
-        }
-
-        private void UpdateBroadcastState()
-        {
-            isBroadcasting = !isBroadcasting;
-
             UpdateIndicator(broadcastingStateIndicator, isBroadcasting);
+            SendLslMarkerButton.IsEnabled = isBroadcasting;
             broadcastButton.Content = (isBroadcasting == true) ? "Stop broadcast" : "Start broadcast";
         }
 
@@ -527,6 +560,7 @@ namespace LSL_Kinect
         {
             MultiSourceFrame acquiredFrame = frameArgs.FrameReference.AcquireFrame();
             UpdateCameraImage(acquiredFrame);
+
             GetBodiesData(acquiredFrame);
             ManageBodiesData();
         }
@@ -539,9 +573,8 @@ namespace LSL_Kinect
         private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
         {
             isKinectAvailable = args.IsAvailable;
-            UpdateKinectCaptureRelatedPanels();
 
-            UpdateIndicator(kinectStateIndicator, isKinectAvailable);
+            UpdateKinectCaptureRelatedUI();
         }
 
         private void OnIdListSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -587,20 +620,18 @@ namespace LSL_Kinect
 
         private void OnBroadcastButtonClicked(object sender, RoutedEventArgs e)
         {
-            UpdateBroadcastState();
-            UpdateBroadcastRelatedButtons();
+            isBroadcasting = !isBroadcasting;
 
             if (isBroadcasting)
             {
-                CreateDataTables();
-                SendStartBroadcastMarker();
+                StartBroadcast();
             }
             else
             {
-                SendEndBroadcastMarker();
-                WriteCSVFile(moCapDataTable);
-                WriteCSVFile(markerDataTable);
+                StopBroadcast();
             }
+
+            UpdateBroadcastRelatedUI();
         }
 
         private void OnSendMarkerKeyPressed(object sender, RoutedEventArgs e)
