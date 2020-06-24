@@ -14,21 +14,17 @@ Go to LSL-Kinect\bin\Release and launch LSL_Kinect.app
 
 When the app is open, place yourself or your test subject in front of the Kinect camera until the skeletton appears on the screen.
 Then choose the correct skeleton ID, you can only record one body data at a time.
-From there, you can choose to broadcast these data using LSL on your local network, or to record them on a local CSV file. 
+From there, you can start to broadcast these data using LSL and to record them on a local CSV file. 
 
-Then use a LSL receiver programm to get the broadcast and a viewing application for .xdf file to visualise the datas. 
+Then use a LSL receiver program to get the broadcast and a viewing application for .xdf file to visualize the data. 
 The software has been tested with LabRecorder and SigViewer.
 
 - Link to download LabRecorder : https://github.com/labstreaminglayer/App-LabRecorder/releases.
 - Link to download SigViewer :  https://github.com/cbrnr/sigviewer.
 
-You can also change the camera rendering of the app to depth rendering and infrared rendering, by using the corresponding buttons at the bottom.
-
-You can enable/disable the skeletton drawing on the screen by clicking the "Visu Tracking" button.
-
 # Known Issues :
 
-- The FPS are lower than expected (15 FPS)
+- The FPS are not constant since the Kinect change its own frame rate by itself depending on the light exposure. You might need to look for the "changing framerate" markers to retrieve the original sampling rate of the signal.
 
 # Developper Guide :
 
