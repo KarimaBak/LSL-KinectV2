@@ -56,6 +56,7 @@ namespace LSL_Kinect
         private const int CHANNELS_PER_JOINT = 4;
         private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT);
         private const int MAX_SKELETON_TRACKED = 1;
+        private const int DATA_STREAM_NOMINAL_RATE = 15;
 
         /* Can be used if we decide to track multiple skeletons at the same time
         private const int CHANNELS_PER_STREAM = MAX_SKELETON_TRACKED * CHANNELS_PER_SKELETON;
@@ -77,7 +78,6 @@ namespace LSL_Kinect
 
         private BodyIdWrapper selectedBodyID = null;
 
-        private int lastBroadcastUsedFrequency = -1;
         private int currentFramerate = -1;
         private double localClockStartingPoint = -1;
         private StreamOutlet outletData = null;
@@ -92,7 +92,6 @@ namespace LSL_Kinect
 
         private bool isKinectAvailable = false;
         private bool isBroadcasting = false;
-        private bool framerateHasChanged = false;
 
         private Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
 
@@ -115,6 +114,7 @@ namespace LSL_Kinect
             InitiateDisplay();
 
             SetBaseCSVPath();
+            CreateDataTables();
 
             //TODO Integrate this when the general flow will be decided
             //GetLslInstructionMarkerStream();
@@ -154,9 +154,7 @@ namespace LSL_Kinect
         {
             StreamInfo mocapStreamMetaData =
                             new StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
-                            CHANNELS_PER_SKELETON, currentFramerate, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
-
-            lastBroadcastUsedFrequency = currentFramerate;
+                            CHANNELS_PER_SKELETON, DATA_STREAM_NOMINAL_RATE, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
 
             XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
 
@@ -191,20 +189,15 @@ namespace LSL_Kinect
         }
         private void StartBroadcast()
         {
-            framerateHasChanged = false;
-            SetLSLStreamInfo();
-            CreateDataTables();
+            currentFramerate = DATA_STREAM_NOMINAL_RATE;
             SendStartBroadcastMarker();
         }
+
         private void StopBroadcast()
         {
             SendEndBroadcastMarker();
             WriteCSVFile(moCapDataTable);
             WriteCSVFile(markerDataTable);
-            if (framerateHasChanged)
-            {
-                MessageBox.Show("The framerate has changed during the broadcast, the output sampling rate might be innacurate.", "Warning !", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
         }
 
         private void SendLslDataOneBodyTracked(float[] data)
@@ -323,7 +316,6 @@ namespace LSL_Kinect
 
             if (isBroadcasting && currentFramerate != lastFramerate)
             {
-                framerateHasChanged = true;
                 string[] message = new string[1] { "The framerate has changed to " + currentFramerate.ToString() };
                 SendMarker(message);
             }
@@ -494,7 +486,7 @@ namespace LSL_Kinect
         {
             csv.WriteField("Software : " + Assembly.GetExecutingAssembly().GetName().Name);
             csv.WriteField("Version :" + Assembly.GetExecutingAssembly().GetName().Version);
-            csv.WriteField("Kinect framerate :" + lastBroadcastUsedFrequency.ToString());
+            csv.WriteField("Stream nominal rate :" + DATA_STREAM_NOMINAL_RATE.ToString());
 
             csv.NextRecord();
             csv.NextRecord();
@@ -573,6 +565,11 @@ namespace LSL_Kinect
         private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)
         {
             isKinectAvailable = args.IsAvailable;
+
+            if(outletData == null)
+            {
+                SetLSLStreamInfo();
+            }
 
             UpdateKinectCaptureRelatedUI();
         }
