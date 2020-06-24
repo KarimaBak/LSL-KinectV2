@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
+﻿using System.Windows.Media.Imaging;
 using Microsoft.Kinect;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Drawing;
+using System.Diagnostics;
+using System;
 
 namespace LSL_Kinect
 {
@@ -18,6 +14,7 @@ namespace LSL_Kinect
         static int _width;
         static int _height;
         static byte[] _pixels = null;
+        static readonly Duration waitingDuration = new Duration(new System.TimeSpan(0));
         #endregion
 
         #region Public methods
@@ -29,9 +26,10 @@ namespace LSL_Kinect
                 _width = frame.FrameDescription.Width;
                 _height = frame.FrameDescription.Height;
                 _pixels = new byte[_width * _height * Constants.BYTES_PER_PIXEL];
-                _bitmap = new WriteableBitmap(_width, _height, 
+                _bitmap = new WriteableBitmap(_width, _height,
                     Constants.DPI, Constants.DPI, Constants.FORMAT, null);
             }
+
 
             if (frame.RawColorImageFormat == ColorImageFormat.Bgra)
             {
@@ -42,15 +40,23 @@ namespace LSL_Kinect
                 frame.CopyConvertedFrameDataToArray(_pixels, ColorImageFormat.Bgra);
             }
 
-            _bitmap.Lock();
+            try
+            {
+                if (_bitmap.TryLock(waitingDuration))
+                {
+                    Marshal.Copy(_pixels, 0, _bitmap.BackBuffer, _pixels.Length);
+                    _bitmap.AddDirtyRect(new Int32Rect(0, 0, _width, _height));
 
-            Marshal.Copy(_pixels, 0, _bitmap.BackBuffer, _pixels.Length);
-            _bitmap.AddDirtyRect(new Int32Rect(0, 0, _width, _height));
-
-            _bitmap.Unlock();
-
+                    _bitmap.Unlock();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("Frame loss","Warning");
+            }
             return _bitmap;
         }
+
 
         #endregion
 
