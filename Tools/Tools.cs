@@ -51,5 +51,17 @@ namespace LSL_Kinect.Tools
             return (value - from) / (to - from);
         }
 
+        public static double ConvertDatetimeToUnixTime(DateTime dt)
+        {
+            DateTime fromDate = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+            double unixTimeSince = dt.Subtract(fromDate).TotalMilliseconds;
+
+            TimeSpan timespanOffset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
+
+            double offset = timespanOffset.TotalMilliseconds;
+
+            return unixTimeSince - offset;
+        }
+
     }
 }

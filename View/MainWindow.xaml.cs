@@ -54,7 +54,7 @@ namespace LSL_Kinect
 
         private const int JOINT_COUNT = 25;
         private const int CHANNELS_PER_JOINT = 4;
-        private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT);
+        private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT) + 1;
         private const int MAX_SKELETON_TRACKED = 1;
         private const int DATA_STREAM_NOMINAL_RATE = 15;
 
@@ -137,78 +137,13 @@ namespace LSL_Kinect
             readerMultiFrame.MultiSourceFrameArrived += OnKinectFrameArrived;
         }
 
-        private void SetLSLStreamInfo()
-        {
-            localClockStartingPoint = local_clock();
-            SetMoCapStreamDefinition();
-            SetMarkersStreamDefinition();
-        }
-
-        private void SetMarkersStreamDefinition()
-        {
-            StreamInfo streamMarker = new StreamInfo("EuroMov-Markers-Kinect", "Markers", 1, 0, channel_format_t.cf_string, currentKinectSensor.UniqueKinectId);
-            outletMarker = new StreamOutlet(streamMarker);
-        }
-
-        private void SetMoCapStreamDefinition()
-        {
-            StreamInfo mocapStreamMetaData =
-                            new StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
-                            CHANNELS_PER_SKELETON, DATA_STREAM_NOMINAL_RATE, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
-
-            XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
-
-            for (int skeletonNumber = 0; skeletonNumber < MAX_SKELETON_TRACKED; skeletonNumber++)
-            {
-                for (int skeletonJointNumber = 0; skeletonJointNumber < JOINT_COUNT; skeletonJointNumber++)
-                {
-                    String currentJointName = Enum.GetName(typeof(JointType), skeletonJointNumber);
-
-                    for (int i = 0; i < 3; i++)
-                    {
-                        AddNewJointChannel(channels, currentJointName + (JointValueNameSuffix)i, (MoCapChannelType)i, "meters");
-                    }
-                    AddNewJointChannel(channels, currentJointName + JointValueNameSuffix._Conf, MoCapChannelType.Confidence, "normalized");
-                }
-            }
-
-            // misc meta-data
-            mocapStreamMetaData.desc().append_child("acquisition")
-                .append_child_value("manufacturer", "Microsoft")
-                .append_child_value("model", "Kinect 2.0");
-
-            outletData = new StreamOutlet(mocapStreamMetaData);
-        }
-
-        private void AddNewJointChannel(XMLElement parent, string jointValueName, MoCapChannelType type, string unit)
-        {
-            parent.append_child("channel")
-                .append_child_value("label", jointValueName)
-                .append_child_value("type", type.ToString())
-                .append_child_value("unit", unit);
-        }
-        private void StartBroadcast()
-        {
-            currentFramerate = DATA_STREAM_NOMINAL_RATE;
-            SendStartBroadcastMarker();
-        }
-
-        private void StopBroadcast()
-        {
-            SendEndBroadcastMarker();
-            WriteCSVFile(moCapDataTable);
-            WriteCSVFile(markerDataTable);
-        }
-
-        private void SendLslDataOneBodyTracked(float[] data)
-        {
-            outletData.push_sample(data, local_clock() - localClockStartingPoint);
-        }
-
         private float[] GetSelectedBodyData(Body body)
         {
             float[] data = new float[CHANNELS_PER_SKELETON];
             int channelIndex = 0;
+
+            data[channelIndex] = Convert.ToSingle(Tools.Tools.ConvertDatetimeToUnixTime(DateTime.Now));
+            channelIndex++;
 
             if (body != null)
             {
@@ -265,15 +200,6 @@ namespace LSL_Kinect
             SendSelectedBodyData(data);
         }
 
-        private void SendSelectedBodyData(float[] data)
-        {
-            if (isBroadcasting)
-            {
-                SendLslDataOneBodyTracked(data);
-                AddRowToDataTable(moCapDataTable, data);
-            }
-        }
-
         private void ManageTrackedBody(Body body)
         {
             Drawing correspondingSkeletton = CheckExistingSkeletons(body.TrackingId);
@@ -296,8 +222,6 @@ namespace LSL_Kinect
             {
                 if (bodyFrame != null)
                 {
-                    canvas.Children.Clear();
-
                     if (bodies == null)
                     {
                         bodies = new Body[bodyFrame.BodyFrameSource.BodyCount];
@@ -320,6 +244,94 @@ namespace LSL_Kinect
                 SendMarker(message);
             }
         }
+
+
+        #region Broadcast
+
+        private void SetLSLStreamInfo()
+        {
+            localClockStartingPoint = local_clock();
+            SetMoCapStreamDefinition();
+            SetMarkersStreamDefinition();
+        }
+
+        private void SetMarkersStreamDefinition()
+        {
+            StreamInfo streamMarker = new StreamInfo("EuroMov-Markers-Kinect", "Markers", 1, 0, channel_format_t.cf_string, currentKinectSensor.UniqueKinectId);
+            outletMarker = new StreamOutlet(streamMarker);
+        }
+
+        private void SetMoCapStreamDefinition()
+        {
+            StreamInfo mocapStreamMetaData =
+                            new StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
+                            CHANNELS_PER_SKELETON, DATA_STREAM_NOMINAL_RATE, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
+
+            XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
+
+            //Timestamp channel
+            AddNewChannel(channels, "Timestamp", "Time", "Unix time");
+
+            for (int skeletonNumber = 0; skeletonNumber < MAX_SKELETON_TRACKED; skeletonNumber++)
+            {
+                for (int skeletonJointNumber = 0; skeletonJointNumber < JOINT_COUNT; skeletonJointNumber++)
+                {
+                    String currentJointName = Enum.GetName(typeof(JointType), skeletonJointNumber);
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        AddNewJointChannel(channels, currentJointName + (JointValueNameSuffix)i, (MoCapChannelType)i, "meters");
+                    }
+                    AddNewJointChannel(channels, currentJointName + JointValueNameSuffix._Conf, MoCapChannelType.Confidence, "normalized");
+                }
+            }
+
+            // misc meta-data
+            mocapStreamMetaData.desc().append_child("acquisition")
+                .append_child_value("manufacturer", "Microsoft")
+                .append_child_value("model", "Kinect 2.0");
+
+            outletData = new StreamOutlet(mocapStreamMetaData);
+        }
+
+        private void AddNewJointChannel(XMLElement parent, string jointValueName, MoCapChannelType type, string unit)
+        {
+            AddNewChannel(parent, jointValueName, type.ToString(), unit);
+        }
+
+        private void AddNewChannel(XMLElement parent, string jointValueName, string type, string unit)
+        {
+            parent.append_child("channel")
+                .append_child_value("label", jointValueName)
+                .append_child_value("type", type)
+                .append_child_value("unit", unit);
+        }
+
+        private void StartBroadcast()
+        {
+            currentFramerate = DATA_STREAM_NOMINAL_RATE;
+            SendStartBroadcastMarker();
+        }
+
+        private void StopBroadcast()
+        {
+            SendEndBroadcastMarker();
+            DateTime now = DateTime.Now;
+            WriteCSVFile(moCapDataTable, now);
+            WriteCSVFile(markerDataTable, now);
+        }
+
+        private void SendSelectedBodyData(float[] data)
+        {
+            if (isBroadcasting)
+            {
+                outletData.push_sample(data, local_clock() - localClockStartingPoint);
+                AddRowToDataTable(moCapDataTable, data);
+            }
+        }
+
+        #endregion Broadcast
+
 
         #region Remote Control
 
@@ -393,7 +405,7 @@ namespace LSL_Kinect
 
         private void SendMarker(string[] dataMarker)
         {
-            markerDescriptionTextBlock.Text = "\"" + dataMarker[0] + "\" at timeStamp: " + DateTime.Now.ToString("hh:mm:ss.fff");
+            markerDescriptionTextBlock.Text = "\"" + dataMarker[0] + "\" at timestamp: " + DateTime.Now.ToString("HH:mm:ss.fff");
             AddRowToDataTable(markerDataTable, dataMarker);
             outletMarker.push_sample(dataMarker, local_clock() - localClockStartingPoint);
         }
@@ -452,10 +464,10 @@ namespace LSL_Kinect
             table.Rows.Add(newRow);
         }
 
-        private void WriteCSVFile(DataTable dataTable)
+        private void WriteCSVFile(DataTable dataTable, DateTime time)
         {
             string extension = ".csv";
-            string date = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            string date = time.ToString("yyyy.MM.dd hh.mm tt", CultureInfo.InvariantCulture);
             string FileName = dataTable.TableName + " " + date;
 
             using (var writer = new StreamWriter(currentCSVpath + FileName + extension))
@@ -517,7 +529,6 @@ namespace LSL_Kinect
             }
         }
 
-
         private Int32Rect GetDetectionBoundaries()
         {
             //We know that the depth Camera has a greater height than the color camera so it's safe to put the max value
@@ -552,7 +563,7 @@ namespace LSL_Kinect
         {
             MultiSourceFrame acquiredFrame = frameArgs.FrameReference.AcquireFrame();
             UpdateCameraImage(acquiredFrame);
-
+            canvas.Children.Clear();
             GetBodiesData(acquiredFrame);
             ManageBodiesData();
         }
@@ -566,7 +577,7 @@ namespace LSL_Kinect
         {
             isKinectAvailable = args.IsAvailable;
 
-            if(outletData == null)
+            if (outletData == null)
             {
                 SetLSLStreamInfo();
             }
