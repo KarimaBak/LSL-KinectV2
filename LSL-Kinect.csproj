@@ -87,6 +87,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Model\BodyIdWrapper.cs" />
+    <Compile Include="Model\SequenceList.cs" />
     <Compile Include="Tools\Tools.cs" />
     <Compile Include="ViewModel\MainWindowViewModel.cs" />
     <Compile Include="Service\LSL.cs" />
@@ -132,6 +133,9 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+    <None Include="SequencesDefinition.xsd">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -148,6 +152,5 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

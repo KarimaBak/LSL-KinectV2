@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.Eventing.Reader;
+using System.Windows.Documents;
 using System.Windows.Input;
 
 namespace LSL_Kinect.Classes
 {
 	public class MainWindowViewModel : INotifyPropertyChanged
     {
+		public ObservableCollection<Sequence> SequenceList { get; set; }
+
 		public ObservableCollection<BodyIdWrapper> IdList { get; set; }
 
 		private string csvPath;
@@ -26,9 +30,18 @@ namespace LSL_Kinect.Classes
 		public MainWindowViewModel()
 		{
 			IdList = new ObservableCollection<BodyIdWrapper>();
+			SequenceList = new ObservableCollection<Sequence>();
 		}
 
-		public void AddBodyID(BodyIdWrapper newIdWrapper)
+		public void AddAllSequences(SequenceList newSequences)
+		{
+            foreach (Sequence sequence in newSequences.listSequence)
+            {
+				SequenceList.Add(sequence);
+			}
+		}
+
+			public void AddBodyID(BodyIdWrapper newIdWrapper)
         {
 			IdList.Add(newIdWrapper);
 		}

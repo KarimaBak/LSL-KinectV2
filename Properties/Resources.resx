@@ -117,31 +117,4 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Marker1" xml:space="preserve">
-    <value>Kinect Marker 1</value>
-  </data>
-  <data name="Marker2" xml:space="preserve">
-    <value>Kinect Marker 2</value>
-  </data>
-  <data name="Marker3" xml:space="preserve">
-    <value>Kinect Marker 3</value>
-  </data>
-  <data name="Marker4" xml:space="preserve">
-    <value>Kinect Marker 4</value>
-  </data>
-  <data name="Marker5" xml:space="preserve">
-    <value>Kinect Marker 5</value>
-  </data>
-  <data name="Marker6" xml:space="preserve">
-    <value>Kinect Marker 6</value>
-  </data>
-  <data name="Marker7" xml:space="preserve">
-    <value>Kinect Marker 7</value>
-  </data>
-  <data name="Marker8" xml:space="preserve">
-    <value>Kinect Marker 8</value>
-  </data>
-  <data name="Marker9" xml:space="preserve">
-    <value>Kinect Marker 9</value>
-  </data>
 </root>

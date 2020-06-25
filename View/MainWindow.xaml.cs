@@ -15,6 +15,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Xml.Serialization;
 using static LSL.liblsl;
 using Brushes = System.Windows.Media.Brushes;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -57,6 +58,7 @@ namespace LSL_Kinect
         private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT) + 1;
         private const int MAX_SKELETON_TRACKED = 1;
         private const int DATA_STREAM_NOMINAL_RATE = 15;
+        static readonly string XML_SEQUENCES_FILE = Directory.GetCurrentDirectory() + "/DefaultSequence.xml";
 
         /* Can be used if we decide to track multiple skeletons at the same time
         private const int CHANNELS_PER_STREAM = MAX_SKELETON_TRACKED * CHANNELS_PER_SKELETON;
@@ -77,6 +79,7 @@ namespace LSL_Kinect
         private MainWindowViewModel currentViewModel = new MainWindowViewModel();
 
         private BodyIdWrapper selectedBodyID = null;
+        private Sequence currentSequence = null;
 
         private int currentFramerate = -1;
         private double localClockStartingPoint = -1;
@@ -108,6 +111,8 @@ namespace LSL_Kinect
         public MainWindow()
         {
             DataContext = currentViewModel;
+            currentViewModel.AddAllSequences(SequenceList.Deserialize(XML_SEQUENCES_FILE));
+
             InitializeComponent();
 
             RegisterKinect();
@@ -116,9 +121,10 @@ namespace LSL_Kinect
             SetBaseCSVPath();
             CreateDataTables();
 
-            //TODO Integrate this when the general flow will be decided
+            //TODO Remove
             //GetLslInstructionMarkerStream();
         }
+
 
         private void InitiateDisplay()
         {
@@ -240,8 +246,7 @@ namespace LSL_Kinect
 
             if (isBroadcasting && currentFramerate != lastFramerate)
             {
-                string[] message = new string[1] { "The framerate has changed to " + currentFramerate.ToString() };
-                SendMarker(message);
+                SendMarker(new Marker("The framerate has changed to " + currentFramerate,MarkerType.Message));
             }
         }
 
@@ -307,15 +312,21 @@ namespace LSL_Kinect
                 .append_child_value("unit", unit);
         }
 
-        private void StartBroadcast()
+        private void StartBroadcast(bool sequenceOrder = false)
         {
             currentFramerate = DATA_STREAM_NOMINAL_RATE;
-            SendStartBroadcastMarker();
+            if (!sequenceOrder)
+            {
+                SendStartBroadcastMarker();
+            }
         }
 
-        private void StopBroadcast()
+        private void StopBroadcast(bool sequenceOrder = false)
         {
-            SendEndBroadcastMarker();
+            if (!sequenceOrder)
+            {
+                SendEndBroadcastMarker();
+            }
             DateTime now = DateTime.Now;
             WriteCSVFile(moCapDataTable, now);
             WriteCSVFile(markerDataTable, now);
@@ -328,6 +339,24 @@ namespace LSL_Kinect
                 outletData.push_sample(data, local_clock() - localClockStartingPoint);
                 AddRowToDataTable(moCapDataTable, data);
             }
+        }
+
+        private void ManageSequenceStep(Marker marker)
+        {
+            switch (marker.Type)
+            {
+                case MarkerType.Start:
+                    StartBroadcast(true);
+                    isBroadcasting = true;
+                    break;
+                case MarkerType.Stop:
+                    StopBroadcast(true);
+                    isBroadcasting = false;
+                    break;
+            }
+
+            UpdateBroadcastRelatedUI();
+            SendMarker(marker);
         }
 
         #endregion Broadcast
@@ -403,21 +432,24 @@ namespace LSL_Kinect
 
         #region Marker
 
-        private void SendMarker(string[] dataMarker)
+        private void SendMarker(Marker marker)
         {
-            markerDescriptionTextBlock.Text = "\"" + dataMarker[0] + "\" at timestamp: " + DateTime.Now.ToString("HH:mm:ss.fff");
-            AddRowToDataTable(markerDataTable, dataMarker);
-            outletMarker.push_sample(dataMarker, local_clock() - localClockStartingPoint);
+            string message = marker.Type.ToString() + " : " + marker.Content;
+            markerDescriptionTextBlock.Text = message + "\nAt timestamp : " + DateTime.Now.ToString("HH:mm:ss.fff");
+
+            string[] data = new string[] { message };
+            AddRowToDataTable(markerDataTable, data);
+            outletMarker.push_sample(data, local_clock() - localClockStartingPoint);
         }
 
         private void SendStartBroadcastMarker()
         {
-            SendMarker(new string[] { "Start broadcasting" });
+            SendMarker(new Marker("Start broadcasting",MarkerType.Start)); ;
         }
 
         private void SendEndBroadcastMarker()
         {
-            SendMarker(new string[] { "Stop broadcasting" });
+            SendMarker(new Marker("Stop broadcasting", MarkerType.Stop)); ;
         }
 
         #endregion Marker
@@ -546,7 +578,6 @@ namespace LSL_Kinect
         private void UpdateBroadcastRelatedUI()
         {
             UpdateIndicator(broadcastingStateIndicator, isBroadcasting);
-            SendLslMarkerButton.IsEnabled = isBroadcasting;
             broadcastButton.Content = (isBroadcasting == true) ? "Stop broadcast" : "Start broadcast";
         }
 
@@ -592,6 +623,14 @@ namespace LSL_Kinect
             ComboBox comboBox = (sender as ComboBox);
             selectedBodyID = (BodyIdWrapper)comboBox.SelectedItem;
         }
+        private void OnSequenceSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            sequenceButton.IsEnabled = true;
+
+            ComboBox comboBox = (sender as ComboBox);
+            currentSequence = (Sequence)comboBox.SelectedItem;
+        }
+
 
         #region Windows Events
 
@@ -645,73 +684,35 @@ namespace LSL_Kinect
         private void OnSendMarkerKeyPressed(object sender, RoutedEventArgs e)
         {
             customMarkerCount++;
-            String[] dataMarker = new String[] { "Custom marker : " + customMarkerCount.ToString() };
-            SendMarker(dataMarker);
+            SendMarker(new Marker("Custom marker : " + customMarkerCount, MarkerType.Message)); ;
         }
 
+        private void OnSequenceButtonClicked(object sender, RoutedEventArgs e)
+        {
+            sequenceButton.Content = (currentSequence.isOnLastStep()) ? "Start Sequence" : "Do next step" ;
+
+            ManageSequenceStep(currentSequence.GetNextStep());
+        }
         #endregion Button Event
 
         #region Keyboard event
 
-        //Try to replace with command in view model instead
+        //TODO Replace with keycode sender
         private void OnKeyDown(object eventSender, KeyEventArgs keyEventArgs)
         {
-            if (isBroadcasting)
-            {
-                if (keyEventArgs.KeyboardDevice.Modifiers == ModifierKeys.Control)
-                {
-                    switch (keyEventArgs.Key)
-                    {
-                        case Key.D1:
-                            SendMarker(new string[] { Properties.Resources.Marker1 });
-                            break;
-
-                        case Key.D2:
-                            SendMarker(new string[] { Properties.Resources.Marker2 });
-                            break;
-
-                        case Key.D3:
-                            SendMarker(new string[] { Properties.Resources.Marker3 });
-                            break;
-
-                        case Key.D4:
-                            SendMarker(new string[] { Properties.Resources.Marker4 });
-                            break;
-
-                        case Key.D5:
-                            SendMarker(new string[] { Properties.Resources.Marker5 });
-                            break;
-
-                        case Key.D6:
-                            SendMarker(new string[] { Properties.Resources.Marker6 });
-                            break;
-
-                        case Key.D7:
-                            SendMarker(new string[] { Properties.Resources.Marker7 });
-                            break;
-
-                        case Key.D8:
-                            SendMarker(new string[] { Properties.Resources.Marker8 });
-                            break;
-
-                        case Key.D9:
-                            SendMarker(new string[] { Properties.Resources.Marker9 });
-                            break;
-                    }
-                }
-                else if (keyEventArgs.Key == Key.M)
-                {
-                    OnSendMarkerKeyPressed(null, null);
-                }
-            }
-            else if (keyEventArgs.Key == Key.Space)
+            if (keyEventArgs.Key == Key.Space)
             {
                 OnBroadcastButtonClicked(null, null);
             }
+            else
+            {
+                OnSendMarkerKeyPressed(null, null);
+            }
         }
-
         #endregion Keyboard event
 
         #endregion Events
+
+       
     }
 }

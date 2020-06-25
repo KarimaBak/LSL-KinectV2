@@ -12,11 +12,11 @@
         Activated="OnWindowGetFocus"
         Deactivated="OnWindowLostFocus"
         KeyDown="OnKeyDown"
-        ResizeMode="CanResizeWithGrip" 
-        ScrollViewer.VerticalScrollBarVisibility="Disabled" 
+        ResizeMode="CanResizeWithGrip"
+        ScrollViewer.VerticalScrollBarVisibility="Disabled"
         Background="White">
     <Window.Effect>
-        <BlurEffect x:Name="blurEffect" Radius="0"/>
+        <BlurEffect x:Name="blurEffect" Radius="0" />
     </Window.Effect>
     <Grid>
         <Grid.RowDefinitions>
@@ -48,19 +48,19 @@
         </GroupBox>
 
         <!-- Row 2 -->
-        <Label Grid.Row="2" Grid.Column="1" Content="Waiting for Kinect" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        <Image Grid.Row="2" Grid.Column="1" x:Name="camera" MaxHeight="700" Stretch="Uniform"/>
-        <Canvas Grid.Row="2" Grid.Column="1" x:Name="canvas"/>
-        <TextBlock x:Name="fpsCounterLabel" Text="0 FPS" Grid.Row="2" Grid.Column="1" VerticalAlignment="Top" 
-                   HorizontalAlignment="Right" FontSize="22" Background="#99000000" Foreground="White" 
+        <Label Grid.Row="2" Grid.Column="1" Content="Waiting for Kinect" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Image Grid.Row="2" Grid.Column="1" x:Name="camera" MaxHeight="700" Stretch="Uniform" />
+        <Canvas Grid.Row="2" Grid.Column="1" x:Name="canvas" />
+        <TextBlock x:Name="fpsCounterLabel" Text="0 FPS" Grid.Row="2" Grid.Column="1" VerticalAlignment="Top"
+                   HorizontalAlignment="Right" FontSize="22" Background="#99000000" Foreground="White"
                    FontWeight="Bold" Panel.ZIndex="10" />
 
         <!-- Second Column -->
         <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="2" Grid.RowSpan="3">
             <GroupBox x:Name="bodyTrackingPanel" Header="Body Tracking" Margin="5" Visibility="Collapsed">
                 <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="5">
-                    <Label Content="Selected Body ID : " Margin="10" VerticalAlignment="Center" />
-                    <ComboBox Width="100" Height="30" ItemsSource="{Binding IdList}" SelectionChanged="OnIdListSelectionChanged" ToolTip="{DynamicResource SELECT_ID_COMBOBOX_TOOLTIP}">
+                    <Label Content="Selected Body ID : " Margin="10,10,10,0" VerticalAlignment="Center" />
+                    <ComboBox Margin="0,0,0,10" Width="100" Height="30" ItemsSource="{Binding IdList}" SelectionChanged="OnIdListSelectionChanged" ToolTip="{DynamicResource SELECT_ID_COMBOBOX_TOOLTIP}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding shortIDString}" VerticalAlignment="Center" HorizontalAlignment="Center" />
@@ -71,12 +71,22 @@
             </GroupBox>
 
             <GroupBox x:Name="broadcastPanel" Grid.RowSpan="2" Header="Broadcast" Margin="5" Visibility="Collapsed">
-                <StackPanel  Orientation="Vertical">
-                    <Button x:Name="broadcastButton" Content="Start Broadcast" Width="100"  Click="OnBroadcastButtonClicked"  Margin="5" ToolTip="Spacebar"/>
-                    <Button  x:Name="SendLslMarkerButton" Content="Send LSL Marker" Width="100"  Click="OnSendMarkerKeyPressed" ToolTip="M"  Margin="5" />
+                <StackPanel Orientation="Vertical">
+                    <Button x:Name="broadcastButton" Content="Start Broadcast" Click="OnBroadcastButtonClicked"  Margin="10" ToolTip="Spacebar" />
+
+                    <Label  Content="Last LSL Marker sent : " Margin="10,10,10,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="markerDescriptionTextBlock"  TextAlignment="Center" Text="None" Margin="0,0,0,10"/>
                     
-                    <Label  Content="LSL Marker sent : " Margin="5" VerticalAlignment="Center" />
-                    <TextBlock x:Name="markerDescriptionTextBlock" Text="-----" Margin="5" HorizontalAlignment="Center" />
+                    <Label Content="Selected Sequence : " Margin="10,10,10,0" VerticalAlignment="Center" />
+                    <ComboBox Margin="0,0,0,10" Width="130" Height="30" ItemsSource="{Binding SequenceList}" SelectionChanged="OnSequenceSelectionChanged"  ToolTip="{DynamicResource SELECT_ID_COMBOBOX_TOOLTIP}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Button x:Name="sequenceButton" Content="Start Sequence" Click="OnSequenceButtonClicked" IsEnabled="false" Margin="10"/>
                 </StackPanel>
             </GroupBox>
         </StackPanel>
