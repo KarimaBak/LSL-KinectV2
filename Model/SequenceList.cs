@@ -43,6 +43,18 @@ namespace LSL_Kinect
 	public class Sequence
 	{
 		private int step = 0;
+		public Marker PreviousStep
+		{ 
+			get 
+			{ return (step > 0) ? Markers[step - 1] : null ; }
+			set { }
+		}
+		public Marker NextStep
+		{
+			get
+			{ return Markers[step]; }
+			set { }
+		}
 
 		[XmlElement(ElementName = "name")]
 		public string Name { get; set; }
@@ -64,7 +76,7 @@ namespace LSL_Kinect
 
 		public bool isOnLastStep() { return (step == Markers.Count - 1); }
 
-		public Marker GetNextStep()
+		public Marker DoNextStep()
         {
 			Marker nextMarker = Markers[step];
 			step++;

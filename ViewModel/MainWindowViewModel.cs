@@ -1,73 +1,110 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics.Eventing.Reader;
-using System.Windows.Documents;
-using System.Windows.Input;
 
 namespace LSL_Kinect.Classes
 {
-	public class MainWindowViewModel : INotifyPropertyChanged
+    public class MainWindowViewModel : INotifyPropertyChanged
     {
-		public ObservableCollection<Sequence> SequenceList { get; set; }
+        public ObservableCollection<Sequence> SequenceList { get; set; }
 
-		public ObservableCollection<BodyIdWrapper> IdList { get; set; }
+        private Sequence currentSequence;
 
-		private string csvPath;
-		public string CsvPath
-		{
-			set
-			{
-				csvPath = value;
-				OnPropertyChanged("CsvPath");
-			}
-			get
-			{
-				return csvPath;
-			}
-		}
+        public Sequence CurrentSequence
+        {
+            set
+            {
+                currentSequence = value;
+                OnPropertyChanged("CurrentSequence");
+                OnPropertyChanged("NextStep");
+                OnPropertyChanged("PreviousStep");
+            }
+            get
+            {
+                return currentSequence;
+            }
+        }
 
-		public MainWindowViewModel()
-		{
-			IdList = new ObservableCollection<BodyIdWrapper>();
-			SequenceList = new ObservableCollection<Sequence>();
-		}
+        public void ActualizeStep()
+        {
+            OnPropertyChanged("NextStep");
+            OnPropertyChanged("PreviousStep");
+        }
 
-		public void AddAllSequences(SequenceList newSequences)
-		{
+        public string NextStep
+        {
+            set
+            { }
+            get
+            {
+                return (CurrentSequence != null && CurrentSequence.NextStep != null) ? CurrentSequence.NextStep.Content : string.Empty;
+            }
+        }
+
+        public string PreviousStep
+        {
+            set {}
+            get
+            {
+                return (CurrentSequence != null && CurrentSequence.PreviousStep != null) ? CurrentSequence.PreviousStep.Content : string.Empty;
+            }
+        }
+
+        public ObservableCollection<BodyIdWrapper> IdList { get; set; }
+
+        private string csvPath;
+
+        public string CsvPath
+        {
+            set
+            {
+                csvPath = value;
+                OnPropertyChanged("CsvPath");
+            }
+            get
+            {
+                return csvPath;
+            }
+        }
+
+        public MainWindowViewModel()
+        {
+            IdList = new ObservableCollection<BodyIdWrapper>();
+            SequenceList = new ObservableCollection<Sequence>();
+        }
+
+        public void AddAllSequences(SequenceList newSequences)
+        {
             foreach (Sequence sequence in newSequences.listSequence)
             {
-				SequenceList.Add(sequence);
-			}
-		}
+                SequenceList.Add(sequence);
+            }
+        }
 
-			public void AddBodyID(BodyIdWrapper newIdWrapper)
+        public void AddBodyID(BodyIdWrapper newIdWrapper)
         {
-			IdList.Add(newIdWrapper);
-		}
+            IdList.Add(newIdWrapper);
+        }
 
+        #region INotifyPropertyChanged Members
 
-		#region INotifyPropertyChanged Members
+        private void NotifyPropertyChanged(string propertyName)
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
 
-		private void NotifyPropertyChanged(string propertyName)
-		{
-			if (PropertyChanged != null)
-			{
-				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-			}
-		}
+        public event PropertyChangedEventHandler PropertyChanged;
 
-		public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            if (this.PropertyChanged != null)
+            {
+                this.PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
 
-		protected virtual void OnPropertyChanged(string propertyName)
-		{
-			if (this.PropertyChanged != null)
-			{
-				this.PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-			}
-		}
-
-		#endregion
-
-	}
+        #endregion INotifyPropertyChanged Members
+    }
 }

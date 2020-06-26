@@ -608,7 +608,8 @@ namespace LSL_Kinect
         {
             sequenceButton.Content = (currentSequence.isOnLastStep()) ? "Start Sequence" : "Do next step" ;
 
-            ManageSequenceStep(currentSequence.GetNextStep());
+            ManageSequenceStep(currentSequence.DoNextStep());
+            currentViewModel.ActualizeStep();
         }
         #endregion Button Event
 

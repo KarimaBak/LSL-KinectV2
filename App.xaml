@@ -16,5 +16,6 @@
             <Setter Property="Height" Value="15" />
         </Style>
         <System:String x:Key="SELECT_ID_COMBOBOX_TOOLTIP">Select an ID to start</System:String>
+        <System:String x:Key="SELECT_SEQUENCE_COMBOBOX_TOOLTIP">Select a sequence to start</System:String>
     </Application.Resources>
 </Application>
