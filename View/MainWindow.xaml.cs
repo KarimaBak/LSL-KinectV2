@@ -119,9 +119,6 @@ namespace LSL_Kinect
 
             SetBaseCSVPath();
             CreateDataTables();
-
-            //TODO Remove
-            //GetLslInstructionMarkerStream();
         }
 
 
@@ -360,75 +357,6 @@ namespace LSL_Kinect
         }
 
         #endregion Broadcast
-
-
-        #region Remote Control
-
-        private void GetLslInstructionMarkerStream()
-        {
-            Thread findStreamThread = new Thread(GetInstructionMarkerStream)
-            {
-                Name = "GetInstructionMarkerStream",
-                IsBackground = true
-            };
-
-            InstructionStreamFound += OnInstructionStreamFound;
-            findStreamThread.Start();
-        }
-
-        private void StartReadingInstructionsMarkers()
-        {
-            Thread getMessageThread = new Thread(ReadInstructionMarker)
-            {
-                Name = "ReadInstructionMarker",
-                IsBackground = true
-            };
-
-            getMessageThread.Start();
-        }
-
-        private void GetInstructionMarkerStream()
-        {
-            Console.WriteLine("Looking for instruction stream...");
-
-            string predicate = "starts-with(name,'Mouse') and type='Markers' and source_id='MouseCircularMarkers'";
-            //By default, resolve_stream() run forever until it find somethign
-            StreamInfo[] results = resolve_stream(predicate);
-            instructionMarkerStream = new StreamInlet(results[0]);
-            InstructionStreamFound();
-
-            Console.WriteLine("Instruction stream found !");
-        }
-
-        private void ReadInstructionMarker()
-        {
-            Console.WriteLine("Reading instructions...");
-
-            while (instructionMarkerStream != null)
-            {
-                string[] message = new string[1];
-                //By default, pull_sample() run forever until it find something
-                instructionMarkerStream.pull_sample(message);
-
-                if (doRecordRegex.IsMatch(message[0]))
-                {
-                    Console.WriteLine("On start record");
-                }
-                if (doPauseRegex.IsMatch(message[0]))
-                {
-                    Console.WriteLine("On pause record");
-                }
-                if (closeRegex.IsMatch(message[0]))
-                {
-                    Console.WriteLine("On windows close");
-                    instructionMarkerStream = null;
-                }
-            }
-
-            Console.WriteLine("Stop Reading instruction.");
-        }
-
-        #endregion Remote Control
 
         #region Marker
 
