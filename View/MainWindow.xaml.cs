@@ -58,7 +58,6 @@ namespace LSL_Kinect
         private const int CHANNELS_PER_SKELETON = (JOINT_COUNT * CHANNELS_PER_JOINT) + 1;
         private const int MAX_SKELETON_TRACKED = 1;
         private const int DATA_STREAM_NOMINAL_RATE = 15;
-        static readonly string XML_SEQUENCES_FILE = Directory.GetCurrentDirectory() + "/DefaultSequence.xml";
 
         /* Can be used if we decide to track multiple skeletons at the same time
         private const int CHANNELS_PER_STREAM = MAX_SKELETON_TRACKED * CHANNELS_PER_SKELETON;
@@ -110,7 +109,7 @@ namespace LSL_Kinect
         public MainWindow()
         {
             DataContext = currentViewModel;
-            currentViewModel.AddAllSequences(SequenceList.Deserialize(XML_SEQUENCES_FILE));
+            currentViewModel.AddAllSequences(SequenceList.Deserialize());
 
             InitializeComponent();
 
@@ -526,11 +525,6 @@ namespace LSL_Kinect
             canvas.Children.Clear();
             GetBodiesData(acquiredFrame);
             ManageBodiesData();
-        }
-
-        private void OnInstructionStreamFound()
-        {
-            StartReadingInstructionsMarkers();
         }
 
         private void OnKinectIsAvailableChanged(object kinect, IsAvailableChangedEventArgs args)

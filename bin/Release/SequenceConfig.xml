@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<!-- This file define sequences of actions for the program LSL Kinect and needs to be placed next to its .exe file. -->
+
+<sequenceList>
+
+	<sequence>
+		<name>Reaching Task</name>
+		<marker>
+			<content>Initial stop</content>
+			<type>Stop</type>
+		</marker>
+		
+		<marker>
+			<content>Calibration</content>
+			<type>Start</type>
+		</marker>
+		<marker>
+			<content>Stop calibration</content>
+			<type>Stop</type>
+		</marker>
+
+		<marker>
+			<content>Spontaneous reaching</content>
+			<type>Start</type>
+		</marker>
+		<marker>
+			<content>Stop spontaneous reaching</content>
+			<type>Stop</type>
+		</marker>
+
+		<marker>
+			<content>Start maximal reaching</content>
+			<type>Start</type>
+		</marker>
+		<marker>
+			<content>Stop maximal reaching</content>
+			<type>Stop</type>
+		</marker>
+	</sequence>
+
+	<sequence>
+		<name>Circular task</name>
+		<marker>
+			<content>Initial stop</content>
+			<type>Stop</type>
+		</marker>
+
+		<marker>
+			<content>Start recording</content>
+			<type>Start</type>
+		</marker>
+		<marker>
+			<content>Stop recording</content>
+			<type>Stop</type>
+		</marker>
+	</sequence>
+
+</sequenceList>

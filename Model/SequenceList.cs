@@ -79,6 +79,8 @@ namespace LSL_Kinect
 	[XmlRoot(ElementName = "sequenceList")]
 	public class SequenceList
 	{
+		static readonly string XML_SEQUENCES_FILE = Directory.GetCurrentDirectory() + "/SequenceConfig.xml";
+
 		[XmlElement(ElementName = "sequence")]
 		public List<Sequence> listSequence { get; set; }
 		public override string ToString()
@@ -91,6 +93,11 @@ namespace LSL_Kinect
 				description += sequence.ToString();
 			}
 			return description;
+		}
+
+		public static SequenceList Deserialize()
+		{
+			return Deserialize(XML_SEQUENCES_FILE);
 		}
 
 
