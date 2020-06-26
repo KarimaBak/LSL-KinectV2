@@ -85,7 +85,6 @@ namespace LSL_Kinect
         private double localClockStartingPoint = -1;
         private StreamOutlet outletData = null;
         private StreamOutlet outletMarker = null;
-        private int customMarkerCount = 0;
 
         private StreamInlet instructionMarkerStream = null;
 
@@ -336,7 +335,8 @@ namespace LSL_Kinect
         {
             if (isBroadcasting)
             {
-                outletData.push_sample(data, local_clock() - localClockStartingPoint);
+                double timestamp = local_clock() - localClockStartingPoint;
+                outletData.push_sample(data, timestamp);
                 AddRowToDataTable(moCapDataTable, data);
             }
         }
@@ -435,7 +435,8 @@ namespace LSL_Kinect
         private void SendMarker(Marker marker)
         {
             string message = marker.Type.ToString() + " : " + marker.Content;
-            markerDescriptionTextBlock.Text = message + "\nAt timestamp : " + DateTime.Now.ToString("HH:mm:ss.fff");
+            markerDescriptionTextBlock.Text = "\"" + message + "\"\n"
+                + "At timestamp : " + DateTime.Now.ToString("HH:mm:ss.fff");
 
             string[] data = new string[] { message };
             AddRowToDataTable(markerDataTable, data);
@@ -681,12 +682,6 @@ namespace LSL_Kinect
             UpdateBroadcastRelatedUI();
         }
 
-        private void OnSendMarkerKeyPressed(object sender, RoutedEventArgs e)
-        {
-            customMarkerCount++;
-            SendMarker(new Marker("Custom marker : " + customMarkerCount, MarkerType.Message)); ;
-        }
-
         private void OnSequenceButtonClicked(object sender, RoutedEventArgs e)
         {
             sequenceButton.Content = (currentSequence.isOnLastStep()) ? "Start Sequence" : "Do next step" ;
@@ -697,16 +692,12 @@ namespace LSL_Kinect
 
         #region Keyboard event
 
-        //TODO Replace with keycode sender
         private void OnKeyDown(object eventSender, KeyEventArgs keyEventArgs)
         {
+            SendMarker(new Marker("Key Pressed : "+ keyEventArgs.Key.ToString(), MarkerType.Message));
             if (keyEventArgs.Key == Key.Space)
             {
                 OnBroadcastButtonClicked(null, null);
-            }
-            else
-            {
-                OnSendMarkerKeyPressed(null, null);
             }
         }
         #endregion Keyboard event
