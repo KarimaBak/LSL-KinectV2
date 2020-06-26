@@ -620,7 +620,7 @@ namespace LSL_Kinect
             SendMarker(new Marker("Key Pressed : "+ keyEventArgs.Key.ToString(), MarkerType.Message));
             if (keyEventArgs.Key == Key.Space)
             {
-                OnBroadcastButtonClicked(null, null);
+                OnSequenceButtonClicked(null, null);
             }
         }
         #endregion Keyboard event

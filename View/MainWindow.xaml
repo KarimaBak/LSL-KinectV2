@@ -57,7 +57,7 @@
 
         <!-- Second Column -->
         <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="2" Grid.RowSpan="3">
-            <GroupBox x:Name="bodyTrackingPanel" Header="Body Tracking" Margin="5" Visibility="Visible" Padding="5">
+            <GroupBox x:Name="bodyTrackingPanel" Header="Body Tracking" Margin="5" Visibility="Collapsed" Padding="5">
                 <StackPanel Orientation="Horizontal">
                     <Label Content="Selected Body ID : " Margin="10" VerticalAlignment="Center" />
                     <ComboBox Width="100" Height="30" ItemsSource="{Binding IdList}" SelectionChanged="OnIdListSelectionChanged" ToolTip="{DynamicResource SELECT_ID_COMBOBOX_TOOLTIP}">
@@ -70,7 +70,7 @@
                 </StackPanel>
             </GroupBox>
 
-            <GroupBox x:Name="broadcastPanel" Grid.RowSpan="2" Header="Broadcast" Margin="5" Visibility="Visible" Padding="5">
+            <GroupBox x:Name="broadcastPanel" Grid.RowSpan="2" Header="Broadcast" Margin="5" Visibility="Collapsed" Padding="5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -92,7 +92,7 @@
 
                     <GridSplitter Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="5"  Height="3" Width="200" />
 
-                    <Button Grid.Row="3" Grid.Column="0" x:Name="sequenceButton" Content="Start Sequence" HorizontalAlignment="Left" Click="OnSequenceButtonClicked" IsEnabled="false" />
+                    <Button Grid.Row="3" Grid.Column="0" x:Name="sequenceButton" Content="Start Sequence" HorizontalAlignment="Left" Click="OnSequenceButtonClicked" IsEnabled="false" ToolTip="Spacebar"/>
                     <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Vertical">
                         <Label Content="Selected Sequence : "  VerticalAlignment="Center" />
                         <ComboBox Width="130" Height="30" ItemsSource="{Binding SequenceList}" SelectedItem="{Binding CurrentSequence}"
