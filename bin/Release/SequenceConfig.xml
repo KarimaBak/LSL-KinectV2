@@ -39,7 +39,7 @@
 	</sequence>
 
 	<sequence>
-		<name>Circular task</name>
+		<name>Circular Steering Task</name>
 		<marker>
 			<content>Initial stop</content>
 			<type>Stop</type>
