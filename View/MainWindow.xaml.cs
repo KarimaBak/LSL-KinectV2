@@ -118,7 +118,6 @@ namespace LSL_Kinect
             CreateDataTables();
         }
 
-
         private void InitiateDisplay()
         {
             cameraColorDetectionRect = GetDetectionBoundaries();
@@ -239,10 +238,9 @@ namespace LSL_Kinect
 
             if (isBroadcasting && currentFramerate != lastFramerate)
             {
-                SendMarker(new Marker("The framerate has changed to " + currentFramerate,MarkerType.Message));
+                SendMarker(new Marker("The framerate has changed to " + currentFramerate, MarkerType.Message));
             }
         }
-
 
         #region Broadcast
 
@@ -360,9 +358,11 @@ namespace LSL_Kinect
                 case MarkerType.Start:
                     StartBroadcast(marker);
                     break;
+
                 case MarkerType.Stop:
                     StopBroadcast(marker);
                     break;
+
                 case MarkerType.Message:
                     SendMarker(marker);
                     break;
@@ -374,12 +374,14 @@ namespace LSL_Kinect
         private void SendMarker(Marker marker)
         {
             string message = marker.Type.ToString() + " : " + marker.Content;
+            DateTime now = DateTime.Now;
             markerDescriptionTextBlock.Text = "\"" + message + "\"\n"
-                + "At timestamp : " + DateTime.Now.ToString("HH:mm:ss.fff");
+                + "At timestamp : " + now.ToString("HH:mm:ss.fff");
 
-            string[] data = new string[] { message };
+            outletMarker.push_sample(new string[] { message }, local_clock() - localClockStartingPoint);
+
+            string[] data = new string[] { now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture), message };
             AddRowToDataTable(markerDataTable, data);
-            outletMarker.push_sample(data, local_clock() - localClockStartingPoint);
         }
 
         #endregion Broadcast
@@ -413,14 +415,13 @@ namespace LSL_Kinect
             markerDataTable.Columns.Add("Marker Message", typeof(string));
         }
 
-        private void AddRowToDataTable<T>(DataTable table, params T[] data)
+        private void AddRowToDataTable<T>(DataTable table, T[] data)
         {
             var newRow = table.NewRow();
-            newRow[0] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
-            for (int i = 1; i < table.Columns.Count; i++)
+            for (int i = 0; i < table.Columns.Count; i++)
             {
-                newRow[i] = data[i - 1];
+                newRow[i] = data[i];
             }
 
             table.Rows.Add(newRow);
@@ -555,6 +556,7 @@ namespace LSL_Kinect
             ComboBox comboBox = (sender as ComboBox);
             selectedBodyID = (BodyIdWrapper)comboBox.SelectedItem;
         }
+
         private void OnSequenceSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             sequenceButton.IsEnabled = true;
@@ -562,7 +564,6 @@ namespace LSL_Kinect
             ComboBox comboBox = (sender as ComboBox);
             currentSequence = (Sequence)comboBox.SelectedItem;
         }
-
 
         #region Windows Events
 
@@ -613,27 +614,27 @@ namespace LSL_Kinect
 
         private void OnSequenceButtonClicked(object sender, RoutedEventArgs e)
         {
-            sequenceButton.Content = (currentSequence.isOnLastStep()) ? "Start Sequence" : "Do next step" ;
+            sequenceButton.Content = (currentSequence.isOnLastStep()) ? "Start Sequence" : "Do next step";
 
             ManageSequenceStep(currentSequence.DoNextStep());
             currentViewModel.ActualizeStep();
         }
+
         #endregion Button Event
 
         #region Keyboard event
 
         private void OnKeyDown(object eventSender, KeyEventArgs keyEventArgs)
         {
-            SendMarker(new Marker("Key Pressed : "+ keyEventArgs.Key.ToString(), MarkerType.Message));
+            SendMarker(new Marker("Key Pressed : " + keyEventArgs.Key.ToString(), MarkerType.Message));
             if (keyEventArgs.Key == Key.Space)
             {
                 OnSequenceButtonClicked(null, null);
             }
         }
+
         #endregion Keyboard event
 
         #endregion Events
-
-       
     }
 }

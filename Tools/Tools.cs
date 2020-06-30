@@ -53,7 +53,7 @@ namespace LSL_Kinect.Tools
 
         public static double ConvertDatetimeToUnixTime(DateTime dt)
         {
-            DateTime fromDate = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+            DateTime fromDate = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
             double unixTimeSince = dt.Subtract(fromDate).TotalMilliseconds;
 
             TimeSpan timespanOffset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
