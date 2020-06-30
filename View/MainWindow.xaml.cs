@@ -9,13 +9,11 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using System.Xml.Serialization;
 using static LSL.liblsl;
 using Brushes = System.Windows.Media.Brushes;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -307,24 +305,42 @@ namespace LSL_Kinect
                 .append_child_value("unit", unit);
         }
 
-        private void StartBroadcast(bool sequenceOrder = false)
+        private void StartBroadcast(Marker marker = null)
         {
-            currentFramerate = DATA_STREAM_NOMINAL_RATE;
-            if (!sequenceOrder)
+            isBroadcasting = true;
+
+            if (marker == null)
             {
-                SendStartBroadcastMarker();
+                marker = new Marker("Start broadcasting", MarkerType.Start, true);
             }
+
+            if (marker.affectCSV)
+            {
+                ClearDataTables();
+            }
+
+            currentFramerate = DATA_STREAM_NOMINAL_RATE;
+
+            SendMarker(marker);
         }
 
-        private void StopBroadcast(bool sequenceOrder = false)
+        private void StopBroadcast(Marker marker = null)
         {
-            if (!sequenceOrder)
+            isBroadcasting = false;
+
+            if (marker == null)
             {
-                SendEndBroadcastMarker();
+                marker = new Marker("Stop broadcasting", MarkerType.Stop, true);
             }
-            DateTime now = DateTime.Now;
-            WriteCSVFile(moCapDataTable, now);
-            WriteCSVFile(markerDataTable, now);
+
+            SendMarker(marker);
+
+            if (marker.affectCSV)
+            {
+                DateTime now = DateTime.Now;
+                WriteCSVFile(moCapDataTable, now);
+                WriteCSVFile(markerDataTable, now);
+            }
         }
 
         private void SendSelectedBodyData(float[] data)
@@ -342,22 +358,18 @@ namespace LSL_Kinect
             switch (marker.Type)
             {
                 case MarkerType.Start:
-                    StartBroadcast(true);
-                    isBroadcasting = true;
+                    StartBroadcast(marker);
                     break;
                 case MarkerType.Stop:
-                    StopBroadcast(true);
-                    isBroadcasting = false;
+                    StopBroadcast(marker);
+                    break;
+                case MarkerType.Message:
+                    SendMarker(marker);
                     break;
             }
 
             UpdateBroadcastRelatedUI();
-            SendMarker(marker);
         }
-
-        #endregion Broadcast
-
-        #region Marker
 
         private void SendMarker(Marker marker)
         {
@@ -370,17 +382,7 @@ namespace LSL_Kinect
             outletMarker.push_sample(data, local_clock() - localClockStartingPoint);
         }
 
-        private void SendStartBroadcastMarker()
-        {
-            SendMarker(new Marker("Start broadcasting",MarkerType.Start)); ;
-        }
-
-        private void SendEndBroadcastMarker()
-        {
-            SendMarker(new Marker("Stop broadcasting", MarkerType.Stop)); ;
-        }
-
-        #endregion Marker
+        #endregion Broadcast
 
         #region CSV
 
@@ -457,11 +459,18 @@ namespace LSL_Kinect
         private void WriteCSVHeader(CsvWriter csv)
         {
             csv.WriteField("Software : " + Assembly.GetExecutingAssembly().GetName().Name);
-            csv.WriteField("Version :" + Assembly.GetExecutingAssembly().GetName().Version);
-            csv.WriteField("Stream nominal rate :" + DATA_STREAM_NOMINAL_RATE.ToString());
+            csv.WriteField("Version : " + Assembly.GetExecutingAssembly().GetName().Version);
+            csv.WriteField("Stream nominal rate : " + DATA_STREAM_NOMINAL_RATE.ToString());
+            csv.WriteField("Sequence Name : " + currentSequence.Name);
 
             csv.NextRecord();
             csv.NextRecord();
+        }
+
+        private void ClearDataTables()
+        {
+            moCapDataTable.Clear();
+            markerDataTable.Clear();
         }
 
         #endregion CSV
@@ -590,9 +599,7 @@ namespace LSL_Kinect
 
         private void OnBroadcastButtonClicked(object sender, RoutedEventArgs e)
         {
-            isBroadcasting = !isBroadcasting;
-
-            if (isBroadcasting)
+            if (!isBroadcasting)
             {
                 StartBroadcast();
             }

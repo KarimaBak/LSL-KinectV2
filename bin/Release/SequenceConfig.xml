@@ -10,7 +10,7 @@
 			<type>Stop</type>
 		</marker>
 		
-		<marker>
+		<marker affectCSV="true">
 			<content>Calibration</content>
 			<type>Start</type>
 		</marker>
@@ -32,24 +32,24 @@
 			<content>Start maximal reaching</content>
 			<type>Start</type>
 		</marker>
-		<marker>
+		<marker affectCSV="true">
 			<content>Stop maximal reaching</content>
 			<type>Stop</type>
 		</marker>
 	</sequence>
 
 	<sequence>
-		<name>Circular task</name>
+		<name>Circular Steering Task</name>
 		<marker>
 			<content>Initial stop</content>
 			<type>Stop</type>
 		</marker>
 
-		<marker>
+		<marker affectCSV="true">
 			<content>Start recording</content>
 			<type>Start</type>
 		</marker>
-		<marker>
+		<marker affectCSV="true">
 			<content>Stop recording</content>
 			<type>Stop</type>
 		</marker>

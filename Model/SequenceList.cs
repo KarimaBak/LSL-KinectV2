@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using System.Xml.Serialization;
@@ -17,6 +18,8 @@ namespace LSL_Kinect
 	[XmlType("marker")]
 	public class Marker
 	{
+		[XmlAttribute("affectCSV")]
+		public bool affectCSV { get; set; }
 		[XmlElement(ElementName = "content")]
 		public string Content { get; set; }
 		[XmlElement(ElementName = "type")]
@@ -28,14 +31,16 @@ namespace LSL_Kinect
 				"Type : " + Type.ToString() + "\n";
         }
 
-        public Marker(string content, MarkerType type)
+        public Marker(string content, MarkerType type, bool _affectCSV=false)
         {
             Content = content;
             Type = type;
-        }
+			affectCSV = _affectCSV;
+		}
 
         public Marker()
         {
+			affectCSV = false;
         }
     }
 
