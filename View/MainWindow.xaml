@@ -92,7 +92,7 @@
 
                     <GridSplitter Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="5"  Height="3" Width="200" />
 
-                    <Button Grid.Row="3" Grid.Column="0" x:Name="sequenceButton" Content="Start Sequence" HorizontalAlignment="Left" Click="OnSequenceButtonClicked" IsEnabled="false" />
+                    <Button Grid.Row="3" Grid.Column="0" x:Name="sequenceButton" Content="Start Sequence" HorizontalAlignment="Left" Click="OnSequenceButtonClicked" IsEnabled="false" ToolTip="Spacebar"/>
                     <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Vertical">
                         <Label Content="Selected Sequence : "  VerticalAlignment="Center" />
                         <ComboBox Width="130" Height="30" ItemsSource="{Binding SequenceList}" SelectedItem="{Binding CurrentSequence}"

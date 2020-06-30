@@ -429,8 +429,8 @@ namespace LSL_Kinect
         private void WriteCSVFile(DataTable dataTable, DateTime time)
         {
             string extension = ".csv";
-            string date = time.ToString("yyyy.MM.dd hh.mm tt", CultureInfo.InvariantCulture);
-            string FileName = dataTable.TableName + " " + date;
+            string date = time.ToString("yyyy-MM-dd--HH-mm-ss", CultureInfo.InvariantCulture);
+            string FileName = dataTable.TableName + "--" + date;
 
             using (var writer = new StreamWriter(currentCSVpath + FileName + extension))
             using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
@@ -627,7 +627,7 @@ namespace LSL_Kinect
             SendMarker(new Marker("Key Pressed : "+ keyEventArgs.Key.ToString(), MarkerType.Message));
             if (keyEventArgs.Key == Key.Space)
             {
-                OnBroadcastButtonClicked(null, null);
+                OnSequenceButtonClicked(null, null);
             }
         }
         #endregion Keyboard event
