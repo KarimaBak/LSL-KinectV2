@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<!-- The root element -->
+<sequenceList>
+
+  <!-- A basic sequence -->
+  <sequence>
+    <!-- The sequence name -->
+    <name>Sequence Test</name>
+
+    <!-- A start marker -->
+    <marker>
+      <content>Start Operation 1</content>
+      <type>Start</type>
+    </marker>
+
+    <!-- A message marker -->
+    <marker>
+      <content>This is a marker message</content>
+      <type>Message</type>
+    </marker>
+
+    <!-- A stop marker that also stop the CSV recording -->
+    <marker affectCSV="true">
+      <content>Stop Operation 1</content>
+      <type>Stop</type>
+    </marker>
+    
+  </sequence>
+  <!-- End of the first sequence -->
+
+  <!-- Another Sequence -->
+  <sequence>
+    <name>Sequence Test 2</name>
+    
+    <marker>
+      <content>This is a second marker message</content>
+      <type>Message</type>
+    </marker>
+    
+  </sequence>
+  <!-- End of the second sequence -->
+
+</sequenceList>
