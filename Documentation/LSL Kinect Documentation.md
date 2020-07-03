@@ -1,8 +1,8 @@
 # LSL Kinect documentation
 
-* [CSV files output](#CSV-files-output)
+* [CSV files output](#csv-files-output)
 	* [Header line](#header-line)
-	* [Mocap data csv](#Mocap-data-csv)
+	* [Mocap data csv](#mocap-data-csv)
 
 # CSV files output
 LSL-Kinect CSV output consists in 2 files :
@@ -53,7 +53,7 @@ There is the header line on the first line as mention on the previous section. F
 And then, there is the data part compound by 101 columns of data :
 
 The third line is a header line that specify the date type of each column.
-- Column 1: `Timestamp` : recording time with the following format in [UNIXTIME](https://cloud.google.com/dataprep/docs/html/UNIXTIME-Function_57344718) format .
+- Column 1: `Timestamp` : recording time in [UNIXTIME](https://cloud.google.com/dataprep/docs/html/UNIXTIME-Function_57344718) format .
 
 - Column 2 - 101 : Theses columns need are grouped by `joint` (body part recognize by the kinect). Each of these group contains 4 columns :
 	- JointName_X : The X position in meter (On the Kinect camera's horizontal axis).
