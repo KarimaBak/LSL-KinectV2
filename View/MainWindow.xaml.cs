@@ -397,7 +397,7 @@ namespace LSL_Kinect
         //Create a data table to store stream data
         private void CreateDataTables()
         {
-            moCapDataTable = new DataTable("Kinect_Capture_MoCap_Data");
+            moCapDataTable = new DataTable("LSL_Kinect_MoCap_Data");
 
             moCapDataTable.Columns.Add("TimeSpan", typeof(string));
 
@@ -409,7 +409,7 @@ namespace LSL_Kinect
                 }
             }
 
-            markerDataTable = new DataTable("Kinect_Capture_Markers_Data");
+            markerDataTable = new DataTable("LSL_Kinect_Markers_Data");
 
             markerDataTable.Columns.Add("TimeSpan", typeof(string));
             markerDataTable.Columns.Add("Marker Message", typeof(string));
@@ -462,7 +462,12 @@ namespace LSL_Kinect
             csv.WriteField("Software : " + Assembly.GetExecutingAssembly().GetName().Name);
             csv.WriteField("Version : " + Assembly.GetExecutingAssembly().GetName().Version);
             csv.WriteField("Stream nominal rate : " + DATA_STREAM_NOMINAL_RATE.ToString());
-            csv.WriteField("Sequence Name : " + currentSequence.Name);
+            string sequenceName = string.Empty;
+            if(currentSequence != null)
+            {
+                sequenceName = currentSequence.Name;
+            }
+            csv.WriteField("Sequence Name : " + sequenceName);
 
             csv.NextRecord();
             csv.NextRecord();
