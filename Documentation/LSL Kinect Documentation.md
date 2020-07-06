@@ -39,9 +39,9 @@ You can record the LSL stream onto a XDF file using [LabRecorder](https://github
 The XDF file can be visualised by using [SigViewer](https://github.com/cbrnr/sigviewer) or any other XDF visualiser tools. For SigViewer, you can display both the data and the markers on the same graphic, if you record them on the same file.
 
 Below an example of body motion data recorded using LSL Kinect and displayed using SigViewer :
-![SigViewer Sample Data](https://github.com/Benoit-Prigent/LSL-Kinect/blob/master/Documentation/LSL_Kinect_SigViewer_Sample_Data.PNG)
+![SigViewer Sample Data](https://github.com/Benoit-Prigent/LSL-Kinect/blob/master/Documentation/Source/LSL_Kinect_SigViewer_Sample_Data.PNG)
 
-![SigViewer Sample Markers](https://github.com/Benoit-Prigent/LSL-Kinect/blob/master/Documentation/LSL_Kinect_SigViewer_Sample_Markers.PNG)
+![SigViewer Sample Markers](https://github.com/Benoit-Prigent/LSL-Kinect/blob/master/Documentation/Source/LSL_Kinect_SigViewer_Sample_Markers.PNG)
 
 # CSV files output
 LSL-Kinect CSV output consists in 2 files :
