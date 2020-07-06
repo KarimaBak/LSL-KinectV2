@@ -1,5 +1,5 @@
 # Overview :
-LSL Kinect is a C# Program that broadcast motion capture data, on your local network, by using Kinect and LabStreamingLayer technology. It also save these data under CSV files.
+LSL Kinect is a C# Program that broadcast motion capture data, on your local network, by using Kinect V2 and LabStreamingLayer technology. It also save these data under CSV files.
 
 # System Requirements :
 
@@ -8,9 +8,9 @@ https://docs.microsoft.com/en-us/previous-versions/windows/kinect/dn782036(v=ieb
 
 # User Guide :
 
-First be sure to have your Kinect device correctly plugged in your computer on a USB 3 port.
+First be sure to have your `Kinect V2` device correctly plugged in your computer on a `USB 3` port.
 
-Go to  [Release](/bin/Release/) and launch `LSL_Kinect.exe` .
+Go to  [Release](/bin/Release/) and launch `LSL_Kinect.exe`. 
 
 When the app is open, place yourself or your test subject in front of the Kinect camera until the skeleton appears on the screen.
 Then choose the correct skeleton ID, you can only record one body data at a time.
@@ -23,10 +23,11 @@ The software has been tested with LabRecorder and SigViewer.
 - To download SigViewer  : [click here](https://github.com/cbrnr/sigviewer).
 
 You can also define a custom sequence of action, by adding one to the configuration file called `SequenceConfig`, that is located next to the .exe file.
-There is a specific documentation file for this in [Documentation](/Documentation/).  
+There is a specific documentation file for this : [Sequence Documentation](https://github.com/Benoit-Prigent/LSL-Kinect/blob/master/Documentation/Sequence%20Configuration%20File%20Documentation.pdf "Sequence Configuration File Documentation.pdf").
 
 ## User input
-- Spacebar : switch to next sequence's step
+- Spacebar : switch to next sequence's step.
+- Any key : send a message marker containing the key code.
 
 # Known Issues :
 
