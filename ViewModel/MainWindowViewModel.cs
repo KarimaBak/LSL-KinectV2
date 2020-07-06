@@ -74,9 +74,12 @@ namespace LSL_Kinect.Classes
 
         public void AddAllSequences(SequenceList newSequences)
         {
-            foreach (Sequence sequence in newSequences.listSequence)
+            if(newSequences != null)
             {
-                SequenceList.Add(sequence);
+                foreach (Sequence sequence in newSequences.listSequence)
+                {
+                    SequenceList.Add(sequence);
+                }
             }
         }
 

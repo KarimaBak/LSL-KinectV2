@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 using System.Xml.Serialization;
@@ -124,13 +125,20 @@ namespace LSL_Kinect
 			XmlSerializer serializer = new XmlSerializer(typeof(SequenceList));
 
 			// Declare an object variable of the type to be deserialized.
-			SequenceList sequences;
+			SequenceList sequences = null;
 
-			using (Stream reader = new FileStream(filename, FileMode.Open))
+            try
+            {
+				using (Stream reader = new FileStream(filename, FileMode.Open))
+				{
+					// Call the Deserialize method to restore the object's state.
+					sequences = (SequenceList)serializer.Deserialize(reader);
+				}
+            }
+            catch (FileNotFoundException)
 			{
-				// Call the Deserialize method to restore the object's state.
-				sequences = (SequenceList)serializer.Deserialize(reader);
-			}
+				Debug.WriteLine("Sequence configuration file not found");
+            }
 
 			return sequences;
 		}
