@@ -14,7 +14,7 @@
         KeyDown="OnKeyDown"
         ResizeMode="CanResizeWithGrip"
         ScrollViewer.VerticalScrollBarVisibility="Disabled"
-        Background="White">
+        Background="White" WindowStartupLocation="CenterScreen">
     <Window.Effect>
         <BlurEffect x:Name="blurEffect" Radius="0" />
     </Window.Effect>

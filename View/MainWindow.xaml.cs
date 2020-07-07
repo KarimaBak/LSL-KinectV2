@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -106,6 +107,8 @@ namespace LSL_Kinect
 
         public MainWindow()
         {
+            ApplicationStartup();
+
             DataContext = currentViewModel;
             currentViewModel.AddAllSequences(SequenceList.Deserialize());
 
@@ -116,6 +119,26 @@ namespace LSL_Kinect
 
             SetBaseCSVPath();
             CreateDataTables();
+
+            
+        }
+
+        private void ApplicationStartup()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            if (args.Length > 1)
+            {
+                string newCSVPath = args[1];
+
+                if (Directory.Exists(newCSVPath))
+                {
+                    currentCSVpath = newCSVPath + "\\";
+                }
+                else
+                {
+                    Console.WriteLine("Invalid folder path");
+                }
+            }
         }
 
         private void InitiateDisplay()
@@ -390,7 +413,10 @@ namespace LSL_Kinect
 
         private void SetBaseCSVPath()
         {
-            currentCSVpath = Directory.GetCurrentDirectory() + "\\";
+            if(currentCSVpath == null)
+            {
+                currentCSVpath = Directory.GetCurrentDirectory() + "\\";
+            }
             currentViewModel.CsvPath = currentCSVpath;
         }
 
