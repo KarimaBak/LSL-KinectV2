@@ -5,6 +5,7 @@
 
 * [Quick Start](#quick-start)
 * [Sequence](#sequence)
+* [Command line arguments](#command-line-arguments)
 * [LSL Streams](#lsl-streams)
 	*  [Visualisation](#visualisation)
 * [CSV files output](#csv-files-output)
@@ -22,6 +23,13 @@ Be sure to have the LSL library (`liblsl32.dll`) next to the program's .exe file
 # Sequence
 
 LSL Kinect program allows the user to predefine several sequence of actions, by using a XML configuration file. There is a dedicated documentation for this : [Sequence Documentation](https://github.com/Benoit-Prigent/LSL-Kinect/blob/master/Documentation/Sequence%20Configuration%20File%20Documentation.pdf "Sequence Configuration File Documentation.pdf").
+
+# Command line arguments
+It's possible to set the CSV output folder location by passing a path as first argument, e.g. :
+
+```
+& 'LSL_Kinect 1.0.5.0' 'C:\Users\Moi\Documents'
+```
 
 # LSL Streams
 LSL Kinect streams data and markers following the LSL specifications : https://github.com/sccn/xdf/wiki/Specifications.
