@@ -50,7 +50,7 @@ namespace LSL_Kinect
                     _bitmap.Unlock();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 Debug.WriteLine("Frame loss","Warning");
             }

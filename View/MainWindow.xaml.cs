@@ -119,8 +119,6 @@ namespace LSL_Kinect
 
             SetBaseCSVPath();
             CreateDataTables();
-
-            
         }
 
         private void ApplicationStartup()
@@ -425,7 +423,7 @@ namespace LSL_Kinect
         {
             moCapDataTable = new DataTable("LSL_Kinect_MoCap_Data");
 
-            moCapDataTable.Columns.Add("TimeSpan", typeof(string));
+            moCapDataTable.Columns.Add("TimeSpan", typeof(double));
 
             foreach (String jointName in Enum.GetNames(typeof(JointType)))
             {
