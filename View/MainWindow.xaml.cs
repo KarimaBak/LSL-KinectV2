@@ -5,11 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -84,8 +82,6 @@ namespace LSL_Kinect
         private StreamOutlet outletData = null;
         private StreamOutlet outletMarker = null;
 
-        private StreamInlet instructionMarkerStream = null;
-
         private DataTable moCapDataTable = null;
         private DataTable markerDataTable = null;
         private string currentCSVpath = null;
@@ -94,14 +90,6 @@ namespace LSL_Kinect
         private bool isBroadcasting = false;
 
         private Int32Rect cameraColorDetectionRect = Int32Rect.Empty;
-
-        public delegate void InstructionStreamFoundHandler();
-
-        public event InstructionStreamFoundHandler InstructionStreamFound;
-
-        private static readonly Regex doRecordRegex = new Regex("DoRecord");
-        private static readonly Regex doPauseRegex = new Regex("DoPause");
-        private static readonly Regex closeRegex = new Regex("WINDOW_CLOSING");
 
         #endregion Private Variables
 
@@ -156,12 +144,12 @@ namespace LSL_Kinect
             readerMultiFrame.MultiSourceFrameArrived += OnKinectFrameArrived;
         }
 
-        private float[] GetSelectedBodyData(Body body)
+        private double[] GetSelectedBodyData(Body body)
         {
-            float[] data = new float[CHANNELS_PER_SKELETON];
+            double[] data = new double[CHANNELS_PER_SKELETON];
             int channelIndex = 0;
 
-            data[channelIndex] = Convert.ToSingle(Tools.Tools.ConvertDatetimeToUnixTime(DateTime.Now));
+            data[channelIndex] = Tools.Tools.ConvertDatetimeToUnixTime(DateTime.Now);
             channelIndex++;
 
             if (body != null)
@@ -175,7 +163,7 @@ namespace LSL_Kinect
             return data;
         }
 
-        private static int AddOneBodyJointData(float[] data, int channelIndex, Joint joint)
+        private static int AddOneBodyJointData(double[] data, int channelIndex, Joint joint)
         {
             CameraSpacePoint jointPosition = joint.Position;
             data[channelIndex++] = jointPosition.X;
@@ -199,7 +187,7 @@ namespace LSL_Kinect
 
         private void ManageBodiesData()
         {
-            float[] data = new float[CHANNELS_PER_SKELETON];
+            double[] data = new double[CHANNELS_PER_SKELETON];
 
             if (bodies != null)
             {
@@ -282,7 +270,7 @@ namespace LSL_Kinect
         {
             StreamInfo mocapStreamMetaData =
                             new StreamInfo("EuroMov-Mocap-Kinect", "MoCap",
-                            CHANNELS_PER_SKELETON, DATA_STREAM_NOMINAL_RATE, channel_format_t.cf_float32, currentKinectSensor.UniqueKinectId);
+                            CHANNELS_PER_SKELETON, DATA_STREAM_NOMINAL_RATE, channel_format_t.cf_double64, currentKinectSensor.UniqueKinectId);
 
             XMLElement channels = mocapStreamMetaData.desc().append_child("channels");
 
@@ -362,7 +350,7 @@ namespace LSL_Kinect
             }
         }
 
-        private void SendSelectedBodyData(float[] data)
+        private void SendSelectedBodyData(double[] data)
         {
             if (isBroadcasting)
             {
@@ -429,7 +417,7 @@ namespace LSL_Kinect
             {
                 foreach (String suffix in Enum.GetNames(typeof(JointValueNameSuffix)))
                 {
-                    moCapDataTable.Columns.Add(jointName + suffix, typeof(float));
+                    moCapDataTable.Columns.Add(jointName + suffix, typeof(double));
                 }
             }
 
