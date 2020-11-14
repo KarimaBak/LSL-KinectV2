@@ -4,19 +4,19 @@ LSL Kinect is a C# Program that broadcast motion capture data, on your local net
 # System Requirements :
 
 You must meet the following system requirements :
-https://docs.microsoft.com/en-us/previous-versions/windows/kinect/dn782036(v=ieb.10)?redirectedfrom=MSDN	
+https://docs.microsoft.com/en-us/previous-versions/windows/kinect/dn782036(v=ieb.10)?redirectedfrom=MSDN
 
 # User Guide :
 
 First be sure to have your `Kinect V2` device correctly plugged in your computer on a `USB 3` port.
 
-Go to  [Release](/bin/Release/) and launch `LSL_Kinect.exe`. 
+Go to  [Release](/bin/Release/) and launch `LSL_Kinect.exe`.
 
 When the app is open, place yourself or your test subject in front of the Kinect camera until the skeleton appears on the screen.
 Then choose the correct skeleton ID, you can only record one body data at a time.
-From there, you can start to broadcast these data using LSL and to record them on a local CSV file. 
+From there, you can start to broadcast these data using LSL and to record them on a local CSV file.
 
-Then use a LSL receiver program to get the broadcast and a viewing application for .xdf file to visualize the data. 
+Then use a LSL receiver program to get the broadcast and a viewing application for .xdf file to visualize the data.
 The software has been tested with LabRecorder and SigViewer.
 
 - To download LabRecorder : [click here](https://github.com/labstreaminglayer/App-LabRecorder/releases).
@@ -47,4 +47,4 @@ https://trello.com/b/p3PkSvUN/lsl-kinect
 For more detailed informations, please see [Documentation](/Documentation/).  
 
 -----  
-Developed by Pierre JEAN (IMT Mines Alès), Denis MOTTET (Université Montpellier) and Benoit Prigent (Euromov).
+Developed by Pierre JEAN (IMT Mines Alès), Denis MOTTET (Univ Montpellier) and Benoit Prigent (Univ Montpellier).
