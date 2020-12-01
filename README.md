@@ -33,7 +33,7 @@ There is a specific documentation file for this : [Sequence Documentation](https
 
 - The FPS are not constant since the Kinect change its own frame rate by itself depending on the light exposure. You might need to look for the "changing framerate" markers to retrieve the original sampling rate of the signal.
 
-# Developper Guide :
+# Developer Guide :
 
 To develop with Kinect you need the correct SDK and driver installed, you can find an installation guide here :
 https://docs.microsoft.com/en-us/previous-versions/windows/kinect/dn782035(v=ieb.10)
@@ -47,4 +47,4 @@ https://trello.com/b/p3PkSvUN/lsl-kinect
 For more detailed informations, please see [Documentation](/Documentation/).  
 
 -----  
-Developed by Pierre JEAN (IMT Mines Alès), Denis MOTTET (Univ Montpellier) and Benoit Prigent (Univ Montpellier).
+Developed by Pierre JEAN (IMT Mines Alès), Denis MOTTET (Univ Montpellier) and Benoit Prigent (Univ Montpellier) in collaboration with Makii MUTHALIB and Karima BAKHTI (CHU Montpellier) for the ReArm project (PHRIP-18-0731) funded by the French Ministry of Health..
