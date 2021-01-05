@@ -48,3 +48,6 @@ For more detailed informations, please see [Documentation](/Documentation/).
 
 -----  
 Developed by Pierre JEAN (IMT Mines Alès), Denis MOTTET (Université Montpellier) and Benoit Prigent (Euromov) in collaboration with Makii MUTHALIB and Karima BAKHTI (CHU Montpellier) for the ReArm project (PHRIP-18-0731) funded by the French Ministry of Health.
+
+Cite as
+Benoit Prigent, Pierre Jean, Denis Mottet, Germain Faity, Karima Bakhti, & Makii Muthalib. (2020, December 1). KarimaBak/LSL-KinectV2: LSL-KinectV2 (Version V1.12). Zenodo. http://doi.org/10.5281/zenodo.4300183
