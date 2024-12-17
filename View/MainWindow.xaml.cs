@@ -78,7 +78,7 @@ namespace LSL_Kinect
         private Sequence currentSequence = null;
 
         private int currentFramerate = -1;
-        private double localClockStartingPoint = -1;
+        //private double localClockStartingPoint = -1;
         private StreamOutlet outletData = null;
         private StreamOutlet outletMarker = null;
 
@@ -255,7 +255,7 @@ namespace LSL_Kinect
 
         private void SetLSLStreamInfo()
         {
-            localClockStartingPoint = local_clock();
+            //localClockStartingPoint = local_clock();
             SetMoCapStreamDefinition();
             SetMarkersStreamDefinition();
         }
@@ -354,8 +354,9 @@ namespace LSL_Kinect
         {
             if (isBroadcasting)
             {
-                double timestamp = local_clock() - localClockStartingPoint;
-                outletData.push_sample(data, timestamp);
+                //double timestamp = local_clock() - localClockStartingPoint;
+                //outletData.push_sample(data, timestamp);
+                outletData.push_sample(data);
                 AddRowToDataTable(moCapDataTable, data);
             }
         }
@@ -387,7 +388,8 @@ namespace LSL_Kinect
             markerDescriptionTextBlock.Text = "\"" + message + "\"\n"
                 + "At timestamp : " + now.ToString("HH:mm:ss.fff");
 
-            outletMarker.push_sample(new string[] { message }, local_clock() - localClockStartingPoint);
+            //outletMarker.push_sample(new string[] { message }, local_clock() - localClockStartingPoint);
+            outletMarker.push_sample(new string[] { message });
 
             string[] data = new string[] { now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture), message };
             AddRowToDataTable(markerDataTable, data);
